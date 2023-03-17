@@ -4,7 +4,6 @@ import librosa as lb
 import IPython.display as ipd
 import soundfile as sf
 import numpy as np
-import cv2
 import ast, joblib
 from pathlib import Path
 
@@ -37,8 +36,10 @@ from audiomentations import (
 )
 import timm
 
+from .Record import Record
+
 class Trainer:
-    def __init__(self, model, optimizer, scheduler, device):
+    def __init__(self, model, optimizer, scheduler, device, CFG):
         """
         Constructor for Trainer class
         """
@@ -46,17 +47,19 @@ class Trainer:
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
-        self.device = device     
+        self.device = device
+        self.CFG = CFG
     
     def train_one_cycle(self, train_loader, epoch):
         """
         Runs one epoch of training, backpropagation and optimization
         """
         self.model.train() 
+        self.model.training = True
 
         total_loss = 0
         total_nums = 0
-        record = Record()
+        record = Record(self.CFG)
 
         pbar = tqdm(enumerate(train_loader),total=len(train_loader))
         for idx,(data, label, weight) in pbar:
@@ -79,16 +82,17 @@ class Trainer:
                 self.scheduler.step(epoch + idx/len(train_loader))
             
         self.model.eval()
-        print(f"epoch:{epoch} train result, loss:{total_loss / total_nums}", file=codecs.open(CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
+        print(f"epoch:{epoch} train result, loss:{total_loss / total_nums}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
 
     def valid_one_cycle(self, valid_loader, epoch):
         """
         Runs one epoch of prediction
         """
         self.model.eval()
+        self.model.training = False
         total_loss = 0
         total_nums = 0
-        record = Record()
+        record = Record(self.CFG)
         
         #get feature vectors array
         pbar = tqdm(enumerate(valid_loader),total=len(valid_loader))
@@ -107,8 +111,8 @@ class Trainer:
         cmAP = record.get_f1score()
         print(cmAP)
 
-        print(f"epoch:{epoch} val result, get_cmAP:{cmAP:.3f}, loss:{total_loss / total_nums}", file=codecs.open(CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
-        savename = CFG.weight_dir + f"model_{cmAP:.3f}_{CFG.key}.bin"
+        print(f"epoch:{epoch} val result, get_cmAP:{cmAP:.3f}, loss:{total_loss / total_nums}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
+        savename = self.CFG.weight_dir + f"model_{cmAP:.3f}_{self.CFG.key}.bin"
         torch.save(self.model.state_dict(),savename)
-        for path in sorted(glob.glob(CFG.weight_dir + f"model_*_{CFG.key}.bin"), reverse=True)[1:]:
+        for path in sorted(glob.glob(self.CFG.weight_dir + f"model_*_{self.CFG.key}.bin"), reverse=True)[1:]:
             os.remove(path)
