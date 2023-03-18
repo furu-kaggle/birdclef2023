@@ -32,24 +32,21 @@ from torch.nn.parameter import Parameter
 import copy, codecs
 import sklearn.metrics
 
-from madgrad import MADGRAD
-
 import audiomentations as AA
 from audiomentations import (
     AddGaussianSNR,
 )
 import timm
 
-from src import Trainer, Model, WaveformDataset
+from src import Trainer, Model, WaveformDataset, CFG
 
 device = torch.device("cuda")
-
 def run(foldtrain=False):
     model = Model(CFG, path = CFG.pretrainpath).to(device)
     
     if foldtrain:
-        train = df[df.fold != CFG.fold].reset_index(drop=True)
-        test =  df[df.fold == CFG.fold].reset_index(drop=True)
+        train = df[~df["eval"].astype(bool)].reset_index(drop=True)
+        test =  df[df["eval"].astype(bool)].reset_index(drop=True)
 
         valid_set = WaveformDataset(
             CFG = CFG,
@@ -116,131 +113,30 @@ def run(foldtrain=False):
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
 
-df = pd.read_csv("data/train_metadata.csv")
-df["secondary_labels"] = df.secondary_labels.apply(eval)
-df["sec_num"] = df["secondary_labels"].apply(len)
-df["filename_id"] = df["filename"].apply(lambda x: x.split("/")[-1].replace(".ogg",""))
-df["sort_index"] = df.index
+df = pd.read_csv("data/train.csv")
+df["labels_id"] = df.labels_id.apply(eval)
 
 submission = pd.read_csv("data/sample_submission.csv")
-
 unique_key = list(submission.columns[1:])
-sec_unique_key = df.explode("secondary_labels").dropna(subset=["secondary_labels"])["secondary_labels"].unique()
-#non-sympathetic bird
-#ただサンプル数が少ないケースもある
-nonsympathetic_key =  set(unique_key) - set(sec_unique_key) 
 
 label2id = {label: label_id for label_id, label in enumerate(sorted(unique_key))}
 id2label = {val: key for key,val in label2id.items()}
 
-df.loc[:,"label_id"] = df.loc[:,"primary_label"].map(label2id)
-df.loc[:,"labels_id"] = df.loc[:,"secondary_labels"].apply(lambda x: np.vectorize(
-    lambda s: label2id[s])(x) if len(x)!=0 else -1)
-
 # #connect path
 pathdf = pd.DataFrame(glob.glob("data/train_audio/**/*.ogg"),columns=["audio_paths"])
-pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".ogg","").replace(".npy",""))
+pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".ogg",""))
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
 df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
 
-#Matrix Factorization (サブラベル同士は相関なしとして扱う)
-mfdf = df[df.sec_num > 0][["label_id","labels_id"]].explode("labels_id").reset_index(drop=True)
+#ユニークキー
+CFG.unique_key = unique_key
 
-#50%以上1なので、一旦一様分布に近似して問題なさそう....？
-mfdf["prob"] = 1
-probdf = mfdf.groupby(["label_id","labels_id"]).prob.count().reset_index()
+#クラス数
+CFG.CLASS_NUM = len(unique_key)
 
-from sklearn.model_selection import KFold, StratifiedKFold
-RANDOM_STATE = 35
-skfold = StratifiedKFold(n_splits=5, random_state=RANDOM_STATE, shuffle=True)
-splits= skfold.split(df ,y=df["author"])
+CFG.key = "eval"
+run(foldtrain=True)
 
-for i,(_, test_index) in enumerate(splits):
-    df.loc[test_index,"fold"] = i
-
-
-class CFG:
-    #image parameter
-    sr = 32000
-    period = 5
-    n_mel = 128
-    fmin = 20
-    fmax = 16000
-    power = 2
-    top_db = 80
-
-    time_len = 281
-
-    # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
-    n_fft = int(sr * period * 4/time_len)
-
-    hop_len = n_fft//4
-
-    #imgsize
-    imagesize = (n_mel, time_len)
-    
-    #クラス数
-    CLASS_NUM = len(unique_key)
-
-    #ユニークキー
-    unique_key = unique_key
-    
-    #バッチサイズ
-    batch_size = 16
-
-    #前処理CPUコア数
-    workers = 8
-
-    #学習率 (best range 5e-9~2e-4)
-    lr = 1e-3
-
-    #スケジューラーの最小学習率
-    min_lr = 1e-6
-
-    #ウォームアップステップ
-    warmupstep = 0
-
-    #エポック数
-    epochs = 20
-
-    #lr ratio (best fit 3)
-    lr_ratio = 3
-
-    #label smoothing rate
-    smooth = 0.005
-
-    #model name
-    model_name = 'eca_nfnet_l0'
-
-    #pretrain model path
-    pretrainpath = "pretrain_weight/eca_nfnet_l0_pretrainmodel_70k_p7.bin"
-
-    #重みを保存するディレクトリ
-    weight_dir = "weight/eca_nfnet_l0/"
-
-    #テストfold
-    fold = 0
-
-    def get_optimizer(model, learning_rate, ratio, decay=0):
-        return  MADGRAD(params=[
-            {"params": model.model.parameters(), "lr": learning_rate/ratio},
-            {"params": model.fc.parameters(),    "lr": learning_rate},
-        ],weight_decay=decay)
-
-    def get_scheduler(optimizer,min_lr, epochs, warmupstep=0,warmup_lr_init=5e-5):
-        # base lr は optimizerを継承
-        # document:https://timm.fast.ai/SGDR
-        return CosineLRScheduler(
-            optimizer, 
-            t_initial=epochs, 
-            lr_min=min_lr, 
-            warmup_t=warmupstep, 
-            warmup_lr_init=warmup_lr_init, 
-            warmup_prefix=True
-        )
-
-for fold in [0]:
-    CFG.fold = fold
-    CFG.key = fold
-    run(foldtrain=True)
+#CFG.key = "all"
+#run(foldtrain=False)
