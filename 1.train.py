@@ -129,14 +129,17 @@ pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
 df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
 
+secdf = pd.read_csv("data/second_df.csv",index_col=0)
+df = pd.merge(df,secdf,on=["filename_id"])
+
 #ユニークキー
 CFG.unique_key = unique_key
 
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
-#CFG.key = "all"
-#run(foldtrain=False)
+CFG.key = "all"
+run(foldtrain=False)

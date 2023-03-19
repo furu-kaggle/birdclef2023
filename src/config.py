@@ -14,20 +14,17 @@ class CFG:
     sr = 32000
     period = 5
     n_mel = 128
-    fmin = 20
-    fmax = 16000
+    fmin = 50
+    fmax = 14000
     power = 2
-    top_db = 80
+    top_db = None
 
     time_len = 281
 
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
-    n_fft = int(sr * period * 4/time_len)
+    n_fft = 2048
 
-    hop_len = n_fft//4
-
-    #imgsize
-    imagesize = (n_mel, time_len)
+    hop_len = 512
     
     #バッチサイズ
     batch_size = 16
@@ -36,16 +33,16 @@ class CFG:
     workers = 8
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 1e-3
+    lr = 7e-4
 
     #スケジューラーの最小学習率
-    min_lr = 1e-6
+    min_lr = 7e-6
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 15
+    epochs = 23
 
     #lr ratio (best fit 3)
     lr_ratio = 3
@@ -60,7 +57,7 @@ class CFG:
     pretrainpath = "pretrain_weight/eca_nfnet_l0_pretrainmodel_70k_p7.bin"
 
     #重みを保存するディレクトリ
-    weight_dir = "src/weight/eca_nfnet_l0/"
+    weight_dir = "src/weight/exp/"
 
     #テストfold
     fold = 0
@@ -76,7 +73,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=20, 
+            t_initial=30, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
