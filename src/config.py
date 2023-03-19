@@ -12,7 +12,7 @@ from madgrad import MADGRAD
 class CFG:
     #image parameter
     sr = 32000
-    period = 5
+    period = 10
     n_mel = 128
     fmin = 50
     fmax = 14000
@@ -22,12 +22,12 @@ class CFG:
     time_len = 281
 
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
-    n_fft = 2048
+    n_fft = 1024
 
-    hop_len = 512
+    hop_len = 320
     
     #バッチサイズ
-    batch_size = 16
+    batch_size = 8
 
     #前処理CPUコア数
     workers = 8

@@ -52,8 +52,7 @@ class WaveformDataset(Dataset):
     def __init__(self,
                  CFG,
                  df: pd.DataFrame,
-                 sr=32000,
-                 period=5,
+                 period = 5,
                  prilabelp=1.0,
                  seclabelp=0.5,
                  mixup_prob = 0.15,
@@ -62,15 +61,16 @@ class WaveformDataset(Dataset):
                  ):
       
         self.df = df.reset_index(drop=True)
-        self.sr = sr
+        self.CFG = CFG
+        self.aug = train_aug
+        self.sr = CFG.sr
         self.period = period
         self.df["sort_index"] = self.df.index
         self.smooth = smooth
         self.prilabelp = prilabelp - self.smooth
         self.seclabelp = seclabelp - self.smooth
         self.train = train
-        self.CFG = CFG
-        self.aug = train_aug
+
         
         #Matrix Factorization (サブラベル同士は相関なしとして扱う)
         self.mfdf = self.df[self.df.sec_num > 0][["label_id","labels_id"]].explode("labels_id").reset_index(drop=True)
@@ -121,17 +121,13 @@ class WaveformDataset(Dataset):
         max_sec = len(data)//sr 
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
-
-        #予測フレーム
-        pred_sec = 7
         
         #データを5秒間隔でかつ7秒幅を取って区切る
-        datas = [data[int(max(0, i-1) * sr):int(min(max_sec, i+6) * sr)] for i in range(0, max_sec, self.period)]
+        datas = [data[int(max(0, i) * sr):int(min(max_sec, i + self.period) * sr)] for i in range(0, max_sec, self.period)]
 
         #端は1秒短くなるので埋める
-        datas[0] = self.crop_or_pad(datas[0] , length=sr*pred_sec)
-        if len(datas) > 1:
-            datas[-1] = self.crop_or_pad(datas[-1] , length=sr*pred_sec)
+        datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period)
+        datas[-1] = self.crop_or_pad(datas[-1] , length=sr*self.period)
 
         datas = np.stack(datas)
         if self.train:

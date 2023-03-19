@@ -54,7 +54,8 @@ def run(foldtrain=False):
             smooth=0,
             mixup_prob=0,
             seclabelp=1.0,
-            train = False
+            train = False,
+            period = 7
         )
         valid_loader = DataLoader(
             valid_set,
@@ -72,7 +73,8 @@ def run(foldtrain=False):
     train_set = WaveformDataset(
         CFG = CFG,
         df=train,
-        smooth=CFG.smooth
+        smooth=CFG.smooth,
+        period = CFG.period
     )
     train_loader = DataLoader(
           train_set,
