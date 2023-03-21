@@ -129,7 +129,7 @@ pathdf = pd.DataFrame(glob.glob("data/train_audio/**/*.ogg"),columns=["audio_pat
 pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".ogg",""))
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
-df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0, 0.3)
+df["weight"] = df["rating"] / df["rating"].max() * 0.2
 
 secdf = pd.read_csv("data/second_df.csv",index_col=0)
 df = pd.merge(df,secdf,on=["filename_id"])
