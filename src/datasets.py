@@ -111,7 +111,7 @@ class WaveformDataset(Dataset):
         #訓練時にはランダムにスタートラインを変える(time shift augmentations)
         offset = 0
         #データ読み込み
-        data, sr = librosa.load(row.audio_paths, sr=None, offset=offset, duration=30, mono=False)
+        data, sr = librosa.load(row.audio_paths, sr=None, offset=offset, duration=30, mono=True)
 
         #augemnt
         if (self.train)&(random.uniform(0,1) < row.weight):
