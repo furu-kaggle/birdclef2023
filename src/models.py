@@ -74,8 +74,9 @@ class Model(nn.Module):
     def wavtoimg(self, wav):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
-        cimg = self.torch_mono_to_color(dbimg)
-        img = dbimg.to(torch.float32) / 255.0
+        img = (dbimg.to(torch.float32) + 80)/80
+        #cimg = self.torch_mono_to_color(dbimg)
+        #img = dbimg.to(torch.float32) / 255.0
 
         return img
 
