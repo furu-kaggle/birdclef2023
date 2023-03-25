@@ -142,17 +142,15 @@ addtrain.loc[:,"labels_id"] = addtrain.loc[:,"labels_id"].apply(lambda x: list(x
 addtrain["sec_num"] = addtrain.loc[:,"labels_id"].apply(len)
 addtrain["eval"] = 0
 
-pathdf = pd.DataFrame(glob.glob("../train*/**/**/*.ogg"),columns=["audio_paths"])
+pathdf = pd.DataFrame(glob.glob("/home/furugori/train*/train*/**/XC*.*"),columns=["audio_paths"])
 pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".mp3","").replace(".ogg",""))
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
-addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
-
-print(addtrain)
+addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)
 
 #secdf = pd.read_csv("pretrain_src/addtrain_second_df.csv",index_col=0)
 #addtrain = pd.merge(addtrain,secdf,on=["filename_id"])
 
-print(addtrain)
+print(addtrain[["primary_label","secoundary_label","label_id","labels_id","audio_paths"]])
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 
