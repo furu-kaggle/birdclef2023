@@ -33,16 +33,16 @@ class CFG:
     workers = 8
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 7e-4
+    lr = 1e-3
 
     #スケジューラーの最小学習率
-    min_lr = 7e-6
+    min_lr = 3e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 23
+    epochs = 25
 
     #lr ratio (best fit 3)
     lr_ratio = 3

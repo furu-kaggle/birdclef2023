@@ -86,12 +86,13 @@ class WaveformDataset(Dataset):
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length:
-            y = np.concatenate([y, np.zeros(length - len(y))])
+            if is_train:
+                n_repeats = length // len(y)
+                epsilon = length % len(y)
 
-            n_repeats = length // len(y)
-            epsilon = length % len(y)
-
-            y = np.concatenate([y]*n_repeats + [y[:epsilon]])
+                y = np.concatenate([y]*n_repeats + [y[:epsilon]])
+            else:
+                y = np.concatenate([y, np.zeros(length - len(y))])
 
         elif len(y) > length:
             if not is_train:
@@ -108,6 +109,7 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
+        #duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
         #訓練時にはランダムにスタートラインを変える(time shift augmentations)
         offset = 0
         #データ読み込み
@@ -126,8 +128,12 @@ class WaveformDataset(Dataset):
         datas = [data[int(max(0, i) * sr):int(min(max_sec, i + self.period) * sr)] for i in range(0, max_sec, self.period)]
 
         #端は1秒短くなるので埋める
-        datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period)
-        datas[-1] = self.crop_or_pad(datas[-1] , length=sr*self.period)
+        datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period,is_train=False)
+        #if (self.train)&(max_sec > self.period):
+            #Resampling (後ろから10秒間リサンプリングする)
+            #datas[-1] = librosa.load(row.audio_paths, sr=32000, offset=duration_seconds - 10, duration=10, mono=True)[0]
+        #else:
+        datas[-1] = self.crop_or_pad(datas[-1] , length=sr*self.period,is_train=False)
 
         datas = np.stack(datas)
         if (self.train):

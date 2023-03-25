@@ -26,6 +26,15 @@ import sklearn.metrics
 
 import timm
 
+class Mixup(object):
+    def __init__(self, mixup_alpha, random_seed=1234):
+        self.mixup_alpha = mixup_alpha
+        self.random_state = np.random.RandomState(random_seed)
+
+    def get_lambda(self):
+        lam = self.random_state.beta(self.mixup_alpha, self.mixup_alpha, 1)[0]
+        return lam, 1 - lam
+
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=True,path=None,training=True):
         super(Model, self).__init__()
@@ -40,6 +49,8 @@ class Model(nn.Module):
         
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
         self.training = training
+
+        self.mixup = Mixup(mixup_alpha=2.0)
         
         #wav to image helper
         self.mel = torchaudio.transforms.MelSpectrogram(
@@ -84,12 +95,17 @@ class Model(nn.Module):
         if self.training:
             # shape:(b, outm, inm, time)
             # inner mixup (0)
-            x1 = 0.5*self.wavtoimg(x[:,0,0,:]) + 0.5*self.wavtoimg(x[:,0,1,:])
+            lam1, lam2 = self.mixup.get_lambda()
+            x1 = lam1*self.wavtoimg(x[:,0,0,:]) + lam2*self.wavtoimg(x[:,0,1,:])
+
             # inner mixup (1)
-            x2 = 0.5*self.wavtoimg(x[:,1,0,:]) + 0.5*self.wavtoimg(x[:,1,1,:])
+            lam1, lam2 = self.mixup.get_lambda()
+            x2 = lam1*self.wavtoimg(x[:,1,0,:]) + lam2*self.wavtoimg(x[:,1,1,:])
+            
             # outer mixup
-            x = 0.5*x1 + 0.5*x2
-            y = 0.5*y[:,0,:] + 0.5*y[:,1,:]
+            lam1, lam2 = self.mixup.get_lambda()
+            x = lam1*x1 + lam2*x2
+            y = lam1*y[:,0,:] + lam2*y[:,1,:]
         else:
             x = self.wavtoimg(x)
         
