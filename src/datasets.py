@@ -73,7 +73,7 @@ class WaveformDataset(Dataset):
 
         
         #Matrix Factorization (サブラベル同士は相関なしとして扱う)
-        self.mfdf = self.df[self.df.sec_num > 0][["label_id","labels_id"]].explode("labels_id").reset_index(drop=True)
+        self.mfdf = self.df[(self.df.sec_num > 0)][["label_id","labels_id"]].explode("labels_id").reset_index(drop=True)
         
         #mixupするlabel_idリストを作成する
         self.mixup_idlist = self.mfdf.groupby("label_id").labels_id.apply(list).to_dict()
@@ -142,7 +142,8 @@ class WaveformDataset(Dataset):
             datas = datas[0]
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
-        labels[row.label_id] = self.prilabelp
+        if row.label_id != -1:
+            labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
             labels[row.labels_id] = self.seclabelp
 
