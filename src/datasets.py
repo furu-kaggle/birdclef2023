@@ -33,16 +33,16 @@ import audiomentations as AA
 train_aug = AA.Compose(
     [
         AA.AddBackgroundNoise(
-            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=0, max_snr_in_db=3, p=0.5
+            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=0, max_snr_in_db=30, p=0.5
         ),
         AA.AddBackgroundNoise(
-            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=0, max_snr_in_db=3, p=0.25
+            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=0, max_snr_in_db=30, p=0.5
         ),
         AA.AddBackgroundNoise(
             sounds_path="data/aicrowd2020_noise_30sec/noise_30sec",
             min_snr_in_db=0,
-            max_snr_in_db=3,
-            p=0.25,
+            max_snr_in_db=30,
+            p=0.75,
         ),
     ]
 )
@@ -87,10 +87,11 @@ class WaveformDataset(Dataset):
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length:
             if is_train:
-                n_repeats = length // len(y)
-                epsilon = length % len(y)
-
-                y = np.concatenate([y]*n_repeats + [y[:epsilon]])
+                wid = length - len(y)
+                start = np.random.randint(0, wid)
+                y_cp = np.zeros(length,dtype=np.float32)
+                y_cp[start : start + len(y)] = y
+                y = y_cp
             else:
                 y = np.concatenate([y, np.zeros(length - len(y))])
 
@@ -128,7 +129,7 @@ class WaveformDataset(Dataset):
         datas = [data[int(max(0, i) * sr):int(min(max_sec, i + self.period) * sr)] for i in range(0, max_sec, self.period)]
 
         #端は1秒短くなるので埋める
-        datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period,is_train=False)
+        datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period,is_train=self.train)
         #if (self.train)&(max_sec > self.period):
             #Resampling (後ろから10秒間リサンプリングする)
             #datas[-1] = librosa.load(row.audio_paths, sr=32000, offset=duration_seconds - 10, duration=10, mono=True)[0]

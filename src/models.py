@@ -50,7 +50,7 @@ class Model(nn.Module):
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
         self.training = training
 
-        self.mixup_in = Mixup(mixup_alpha=0.5)
+        self.mixup_in = Mixup(mixup_alpha=2.0)
         self.mixup_out = Mixup(mixup_alpha=2.0)
         
         #wav to image helper
