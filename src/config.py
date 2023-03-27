@@ -19,8 +19,6 @@ class CFG:
     power = 2
     top_db = None
 
-    time_len = 281
-
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
     n_fft = 1024
 

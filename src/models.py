@@ -50,7 +50,8 @@ class Model(nn.Module):
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
         self.training = training
 
-        self.mixup = Mixup(mixup_alpha=2.0)
+        self.mixup_in = Mixup(mixup_alpha=0.5)
+        self.mixup_out = Mixup(mixup_alpha=2.0)
         
         #wav to image helper
         self.mel = torchaudio.transforms.MelSpectrogram(
@@ -86,24 +87,21 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
-        #cimg = self.torch_mono_to_color(dbimg)
-        #img = dbimg.to(torch.float32) / 255.0
-
         return img
 
     def forward(self, x, y=None, w=None):
         if self.training:
             # shape:(b, outm, inm, time)
             # inner mixup (0)
-            lam1, lam2 = self.mixup.get_lambda()
+            lam1, lam2 = self.mixup_in.get_lambda()
             x1 = lam1*self.wavtoimg(x[:,0,0,:]) + lam2*self.wavtoimg(x[:,0,1,:])
 
             # inner mixup (1)
-            lam1, lam2 = self.mixup.get_lambda()
+            lam1, lam2 = self.mixup_in.get_lambda()
             x2 = lam1*self.wavtoimg(x[:,1,0,:]) + lam2*self.wavtoimg(x[:,1,1,:])
             
             # outer mixup
-            lam1, lam2 = self.mixup.get_lambda()
+            lam1, lam2 = self.mixup_out.get_lambda()
             x = lam1*x1 + lam2*x2
             y = lam1*y[:,0,:] + lam2*y[:,1,:]
         else:
