@@ -148,7 +148,7 @@ print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 
-df["weight"] = df["rating"] / df["rating"].max() * 0.2
+df["weight"] = df["rating"] / df["rating"].max() #* 0.2
 
 #ユニークキー
 CFG.unique_key = unique_key
