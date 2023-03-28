@@ -33,7 +33,7 @@ class CFG:
     workers = 8
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 1e-3
+    lr = 3e-3
 
     #スケジューラーの最小学習率
     min_lr = 3e-5
@@ -42,7 +42,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 30
+    epochs = 25
 
     #lr ratio (best fit 3)
     lr_ratio = 3
@@ -54,7 +54,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "ppweight_nf1024_hop320_n128_f514/pretrain_weightmodel_all_last.bin"
+    pretrainpath = "pretrain_weight/pretrain_weightmodel_all_60.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"

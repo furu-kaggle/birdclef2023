@@ -33,16 +33,16 @@ import audiomentations as AA
 train_aug = AA.Compose(
     [
         AA.AddBackgroundNoise(
-            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=0, max_snr_in_db=3, p=0.5
+            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=0, max_snr_in_db=30, p=0.75
         ),
         AA.AddBackgroundNoise(
-            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=0, max_snr_in_db=3, p=0.25
+            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=0, max_snr_in_db=30, p=0.5
         ),
         AA.AddBackgroundNoise(
             sounds_path="data/aicrowd2020_noise_30sec/noise_30sec",
             min_snr_in_db=0,
             max_snr_in_db=3,
-            p=0.25,
+            p=0.5,
         ),
     ]
 )

@@ -6,6 +6,7 @@ import soundfile as sf
 import numpy as np
 import ast, joblib
 from pathlib import Path
+import torchaudio as ta
 
 import librosa.display
 from sklearn import preprocessing
@@ -51,6 +52,9 @@ class Model(nn.Module):
         self.training = training
 
         self.mixup = Mixup(mixup_alpha=2.0)
+
+        self.freq_mask = ta.transforms.FrequencyMasking(24, iid_masks=True)
+        self.time_mask = ta.transforms.TimeMasking(100, iid_masks=True)
         
         #wav to image helper
         self.mel = torchaudio.transforms.MelSpectrogram(
@@ -86,8 +90,11 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
-        #cimg = self.torch_mono_to_color(dbimg)
-        #img = dbimg.to(torch.float32) / 255.0
+        if (self.training)&(random.uniform(0,1) < 0.5):
+            img = self.freq_mask(img)
+        if (self.training)&(random.uniform(0,1) < 0.5):
+            img = self.time_mask(img)
+
 
         return img
 
