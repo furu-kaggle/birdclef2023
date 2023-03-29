@@ -36,13 +36,13 @@ class CFG:
     lr = 3e-3
 
     #スケジューラーの最小学習率
-    min_lr = 3e-5
+    min_lr = 1e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 25
+    epochs = 30
 
     #lr ratio (best fit 3)
     lr_ratio = 3
@@ -68,7 +68,7 @@ class CFG:
             {"params": model.fc.parameters(),    "lr": learning_rate},
         ],weight_decay=decay)
 
-    def get_scheduler(optimizer, min_lr, epochs, warmupstep=0,warmup_lr_init=5e-5):
+    def get_scheduler(optimizer, min_lr, epochs, warmupstep=1,warmup_lr_init=5e-5):
         # base lr は optimizerを継承
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
