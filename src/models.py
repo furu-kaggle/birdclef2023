@@ -66,6 +66,9 @@ class Model(nn.Module):
             mel_scale = 'htk')
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
+
+        self.freq_mask = ta.transforms.FrequencyMasking(24, iid_masks=True)
+        self.time_mask = ta.transforms.TimeMasking(100, iid_masks=True)
         
     def torch_mono_to_color(self, X, eps=1e-6, mean=None, std=None):
         mean = mean or X.mean()
@@ -87,6 +90,10 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
+        # if (self.training)&(random.uniform(0,1) < 0.5):
+        #     img = self.freq_mask(img)
+        # if (self.training)&(random.uniform(0,1) < 0.5):
+        #     img = self.time_mask(img)
         return img
 
     def forward(self, x, y=None, w=None):

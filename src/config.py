@@ -13,14 +13,14 @@ class CFG:
     #image parameter
     sr = 32000
     period = 10
-    n_mel = 128
+    n_mel = 224
     fmin = 50
     fmax = 14000
     power = 2
     top_db = None
 
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
-    n_fft = 1024
+    n_fft = 2048
 
     hop_len = 320
     
@@ -31,7 +31,7 @@ class CFG:
     workers = 8
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 1e-3
+    lr = 5e-3
 
     #スケジューラーの最小学習率
     min_lr = 3e-5
@@ -43,7 +43,7 @@ class CFG:
     epochs = 25
 
     #lr ratio (best fit 3)
-    lr_ratio = 3
+    lr_ratio = 5
 
     #label smoothing rate
     smooth = 0.005
@@ -52,7 +52,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "pretrain_weight/pretrain_weightmodel_all_60.bin"
+    pretrainpath = "pretrain_weight/nmel224nfft2048hl320_pt_tpu_e120/model_0_120.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
