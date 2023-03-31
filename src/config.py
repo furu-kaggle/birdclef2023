@@ -12,7 +12,7 @@ from madgrad import MADGRAD
 class CFG:
     #image parameter
     sr = 32000
-    period = 10
+    period = 15
     n_mel = 224
     fmin = 50
     fmax = 14000
