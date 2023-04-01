@@ -130,7 +130,7 @@ pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].rep
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
 
-addtrain = pd.read_csv("pretrain_src/add_train.csv",index_col=0).dropna(subset=["primary_label"])
+addtrain = pd.read_csv("data/add_train.csv",index_col=0).dropna(subset=["primary_label"])
 addtrain["secondary_labels"] = addtrain["secondary_labels"].apply(eval)
 addtrain.loc[:,"label_id"] = addtrain.loc[:,"primary_label"].map(label2id).fillna(-1).astype(int)
 addtrain.loc[:,"labels_id"] = addtrain.loc[:,"secondary_labels"].apply(lambda x: np.vectorize(
@@ -139,7 +139,7 @@ addtrain.loc[:,"labels_id"] = addtrain.loc[:,"labels_id"].apply(lambda x: list(x
 addtrain["sec_num"] = addtrain.loc[:,"labels_id"].apply(len)
 addtrain["eval"] = 0
 
-pathdf = pd.DataFrame(glob.glob("/home/furugori/train*/train*/**/XC*.*"),columns=["audio_paths"])
+pathdf = pd.DataFrame(glob.glob("data/addtrain_audio/XC*.*"),columns=["audio_paths"])
 pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".mp3","").replace(".ogg",""))
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)

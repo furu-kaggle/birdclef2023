@@ -27,10 +27,10 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 8
+    batch_size = 30
 
     #前処理CPUコア数
-    workers = 8
+    workers = 30
 
     #学習率 (best range 5e-9~2e-4)
     lr = 3e-3
@@ -42,7 +42,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 30
+    epochs = 50
 
     #lr ratio (best fit 3)
     lr_ratio = 3
@@ -54,7 +54,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "pretrain_weight/pretrain_weightmodel_all_60.bin"
+    pretrainpath = "data/pretrain_weightmodel_all_60.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
