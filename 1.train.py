@@ -68,23 +68,7 @@ def run(foldtrain=False):
 
     else:
         train = df
-    
-
-    train_set = WaveformDataset(
-        CFG = CFG,
-        df=train,
-        smooth=CFG.smooth,
-        period = CFG.period
-    )
-    train_loader = DataLoader(
-          train_set,
-          batch_size=CFG.batch_size,
-          drop_last=True,
-          pin_memory=True,
-          shuffle = True,
-          num_workers=CFG.workers,
-    )
-    
+        
     optimizer = CFG.get_optimizer(
         model, 
         CFG.lr, 
@@ -106,6 +90,20 @@ def run(foldtrain=False):
     )
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
+        train_set = WaveformDataset(
+            CFG = CFG,
+            df=train,
+            smooth=CFG.smooth,
+            period = CFG.epoch#updater[epoch]
+        )
+        train_loader = DataLoader(
+            train_set,
+            batch_size=CFG.batch_size,
+            drop_last=True,
+            pin_memory=True,
+            shuffle = True,
+            num_workers=CFG.workers,
+        )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
         if foldtrain:
@@ -148,7 +146,7 @@ print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 
-df["weight"] = df["rating"] / df["rating"].max()
+df["weight"] = df["rating"] / df["rating"].max() * 0.2
 
 #ユニークキー
 CFG.unique_key = unique_key

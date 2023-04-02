@@ -62,13 +62,22 @@ class CFG:
     #テストfold
     fold = 0
 
+    updater = [
+        60,30,15,15,15,#first 5e
+        14,13,12,11,10,#next 5e
+        10,10,10,10,10,#continuous
+        10,10,10,10,10,#continuous
+        9,9,8,8,7, #finetune
+        6,6,5,5,5, #finish
+    ]
+
     def get_optimizer(model, learning_rate, ratio, decay=0):
         return  MADGRAD(params=[
             {"params": model.model.parameters(), "lr": learning_rate/ratio},
             {"params": model.fc.parameters(),    "lr": learning_rate},
         ],weight_decay=decay)
 
-    def get_scheduler(optimizer, min_lr, epochs, warmupstep=1,warmup_lr_init=5e-5):
+    def get_scheduler(optimizer, min_lr, epochs, warmupstep=3,warmup_lr_init=1e-5):
         # base lr は optimizerを継承
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
