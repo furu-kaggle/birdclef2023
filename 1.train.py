@@ -94,7 +94,7 @@ def run(foldtrain=False):
             CFG = CFG,
             df=train,
             smooth=CFG.smooth,
-            period = CFG.epoch#updater[epoch]
+            period = CFG.period#updater[epoch]
         )
         train_loader = DataLoader(
             train_set,
@@ -112,6 +112,13 @@ def run(foldtrain=False):
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
+            if (epoch%5==0)&(epoch > 30):
+                try:
+                    savename = CFG.weight_dir + f"model_{epoch}.bin"
+                    torch.save(trainer.model.state_dict(),savename)
+                except:
+                    pass
+                    
 
 df = pd.read_csv("data/train.csv")
 df["labels_id"] = df.labels_id.apply(eval)
@@ -154,8 +161,8 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 CFG.key = "all"
 run(foldtrain=False)

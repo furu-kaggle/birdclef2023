@@ -33,10 +33,10 @@ class CFG:
     workers = 30
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 3e-3
+    lr = 1e-2
 
     #スケジューラーの最小学習率
-    min_lr = 1e-5
+    min_lr = 5e-5
 
     #ウォームアップステップ
     warmupstep = 0
@@ -45,7 +45,7 @@ class CFG:
     epochs = 50
 
     #lr ratio (best fit 3)
-    lr_ratio = 3
+    lr_ratio = 5
 
     #label smoothing rate
     smooth = 0.005
@@ -82,7 +82,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=30, 
+            t_initial=50, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 

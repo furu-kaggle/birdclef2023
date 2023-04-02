@@ -53,8 +53,8 @@ class Model(nn.Module):
 
         self.mixup = Mixup(mixup_alpha=2.0)
 
-        self.freq_mask = ta.transforms.FrequencyMasking(24, iid_masks=True)
-        self.time_mask = ta.transforms.TimeMasking(100, iid_masks=True)
+        self.freq_mask = ta.transforms.FrequencyMasking(12, iid_masks=True)
+        self.time_mask = ta.transforms.TimeMasking(50, iid_masks=True)
         
         #wav to image helper
         self.mel = torchaudio.transforms.MelSpectrogram(

@@ -4,8 +4,8 @@
 commit_message="Update: $(date '+%Y-%m-%d %H:%M:%S')"
 
 # 更新された*.pyファイルを自動追加
-git add -u '*.py *.sh'
-git add -u 'src/*.py'
+git add -u 1.train.py update.sh
+git add -u src/*.py
 
 # コミット
 git commit -m "$commit_message"
@@ -14,7 +14,7 @@ git commit -m "$commit_message"
 commit_uuid=$(git rev-parse HEAD)
 
 # リモートリポジトリにプッシュ
-git push origin feature4-cloud
+git push origin HEAD
 
 # 最後のコミットメッセージとUUIDを表示
 echo "Last commit message: $commit_message"
