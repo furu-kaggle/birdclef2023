@@ -42,7 +42,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 30
+    epochs = 40
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -63,12 +63,14 @@ class CFG:
     fold = 0
 
     updater = [
-        60,30,15,15,15,#first 5e
-        14,13,12,11,10,#next 5e
+        60,60,30,15,15,#first 5e
+        15,14,13,12,11,#next 5e
         10,10,10,10,10,#continuous
-        10,10,10,10,10,#continuous
-        9,9,8,8,7, #finetune
-        6,6,5,5,5, #finish
+        9,9,9,9,9,#continuous
+        8,8,8,8,8, #finish
+        7,7,7,7,7, #finish
+        6,6,6,6,6, #finish
+        5,5,5,5,5, #finish
     ]
 
     def get_optimizer(model, learning_rate, ratio, decay=0):
