@@ -14,7 +14,7 @@ git commit -m "$commit_message"
 commit_uuid=$(git rev-parse HEAD)
 
 # リモートリポジトリにプッシュ
-git push origin feature4-cloud
+git push origin feature4-cloud-timeev
 
 # 最後のコミットメッセージとUUIDを表示
 echo "Last commit message: $commit_message"
@@ -22,7 +22,7 @@ echo "Last commit UUID: $commit_uuid"
 
 # Kaggle datasetの更新
 cp src/*.py src/weight/exp/
-#cd src/weight
-#cp -r exp "$commit_message"
+cd src/weight
+cp -r exp "$commit_uuid"
 #rm exp/*
 kaggle datasets version -m "$commit_message" -p src/weight -r tar
