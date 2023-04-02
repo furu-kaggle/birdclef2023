@@ -65,6 +65,7 @@ class WaveformDataset(Dataset):
         self.aug = train_aug
         self.sr = CFG.sr
         self.period = period
+        print(f"period set {period}s")
         self.df["sort_index"] = self.df.index
         self.smooth = smooth
         self.prilabelp = prilabelp - self.smooth
@@ -83,6 +84,8 @@ class WaveformDataset(Dataset):
         
         #label_idリストからレコード番号を取得し、レコード番号からランダムサンプリングする
         self.id2record = sdf.groupby("label_id").sort_index.apply(list)
+
+        self.duration = max(30, self.period)
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length:
@@ -113,7 +116,7 @@ class WaveformDataset(Dataset):
         #訓練時にはランダムにスタートラインを変える(time shift augmentations)
         offset = 0
         #データ読み込み
-        data, sr = librosa.load(row.audio_paths, sr=32000, offset=offset, duration=30, mono=True)
+        data, sr = librosa.load(row.audio_paths, sr=32000, offset=offset, duration=self.duration, mono=True)
 
         #augemnt
         if (self.train)&(random.uniform(0,1) < row.weight):
@@ -145,7 +148,7 @@ class WaveformDataset(Dataset):
         if row.label_id != -1:
             labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
-            labels[row.labels_id] = self.seclabelp
+            labels[row.labels_id] =  1.0 if (self.train)&(self.period > 10) else self.seclabelp
 
         return datas, labels
     
