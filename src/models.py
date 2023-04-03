@@ -26,6 +26,7 @@ import copy, codecs
 import sklearn.metrics
 
 import timm
+from timm.models.nfnet import ScaledStdConv2d
 
 class Mixup(object):
     def __init__(self, mixup_alpha, random_seed=1234):
@@ -39,8 +40,15 @@ class Mixup(object):
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=True,path=None,training=True):
         super(Model, self).__init__()
-        self.model = timm.create_model(CFG.model_name,pretrained=pretrained, drop_rate=0.2, drop_path_rate=0.2, in_chans=1)
-        self.model.reset_classifier(num_classes=0)
+        self.model = timm.create_model(
+            CFG.model_name,
+            pretrained=pretrained, 
+            drop_rate=0.2, 
+            drop_path_rate=0.2, 
+            in_chans=1,
+            num_classes=0
+        )
+        self.model.stem.conv1 = ScaledStdConv2d(1, 16, kernel_size=(3, 3), stride=(2, 1), padding=(1, 1))
         if path is not None:
           self.model.load_state_dict(torch.load(path))
         

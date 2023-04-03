@@ -42,7 +42,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 50
+    epochs = 30
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -82,7 +82,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=50, 
+            t_initial=30, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
