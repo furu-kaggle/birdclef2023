@@ -36,7 +36,7 @@ class CFG:
     lr = 1e-2
 
     #スケジューラーの最小学習率
-    min_lr = 5e-5
+    min_lr = 1e-4
 
     #ウォームアップステップ
     warmupstep = 0
@@ -63,11 +63,11 @@ class CFG:
     fold = 0
 
     updater = [
-        60,30,15,15,15,#first 5e
-        14,13,12,11,10,#next 5e
+        15,14,13,12,11,#first 5e
+        10,10,10,10,10,#next 5e
         10,10,10,10,10,#continuous
         10,10,10,10,10,#continuous
-        9,9,8,8,7, #finetune
+        9,9,9,8,7, #finetune
         6,6,5,5,5, #finish
     ]
 

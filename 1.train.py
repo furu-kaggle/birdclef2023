@@ -94,7 +94,7 @@ def run(foldtrain=False):
             CFG = CFG,
             df=train,
             smooth=CFG.smooth,
-            period = CFG.period#updater[epoch]
+            period = CFG.updater[epoch]
         )
         train_loader = DataLoader(
             train_set,
@@ -153,7 +153,7 @@ print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 
-df["weight"] = df["rating"] / df["rating"].max() * 0.2
+df["weight"] = df["rating"] / df["rating"].max()# * 0.2
 
 #ユニークキー
 CFG.unique_key = unique_key
@@ -161,8 +161,8 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-#CFG.key = "eval"
-#run(foldtrain=True)
+CFG.key = "eval"
+run(foldtrain=True)
 
 CFG.key = "all"
 run(foldtrain=False)

@@ -145,7 +145,7 @@ class WaveformDataset(Dataset):
         if row.label_id != -1:
             labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
-            labels[row.labels_id] = self.seclabelp
+            labels[row.labels_id] = 1.0 if (self.train)&(self.period > 10) else self.seclabelp
 
         return datas, labels
     

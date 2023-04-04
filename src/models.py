@@ -28,6 +28,59 @@ import sklearn.metrics
 import timm
 from timm.models.nfnet import ScaledStdConv2d
 
+def init_layer(layer):
+    nn.init.xavier_uniform_(layer.weight)
+
+    if hasattr(layer, "bias"):
+        if layer.bias is not None:
+            layer.bias.data.fill_(0.)
+            
+class AttBlockV2(nn.Module):
+    def __init__(self,
+                 in_features: int,
+                 out_features: int,
+                 activation="linear"):
+        super().__init__()
+
+        self.activation = activation
+        self.att = nn.Conv1d(
+            in_channels=in_features,
+            out_channels=out_features,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            bias=True)
+        self.cla = nn.Conv1d(
+            in_channels=in_features,
+            out_channels=out_features,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            bias=True)
+
+        self.init_weights()
+
+    def init_weights(self):
+        init_layer(self.att)
+        init_layer(self.cla)
+
+    def forward(self, x, mask=None):
+        # x: (bs, channel(2304), n_time(47))
+        norm_att = torch.softmax(torch.tanh(self.att(x)), dim=-1) #(bs, class(2304 to 264),time(47))
+        #ここでtimeにマスクすれば良い？
+        if mask is not None:
+            norm_att = norm_att * mask[:,None,:]
+        cla = self.nonlinear_transform(self.cla(x)) #(bs, class(2304 to 264),time(47))
+        x = torch.sum(norm_att * cla, dim=2) #(bs, class(2304 to 264)) from time(47).sum()
+        return x, norm_att, cla
+
+    def nonlinear_transform(self, x):
+        if self.activation == 'linear':
+            return x
+        elif self.activation == 'sigmoid':
+            print("beware of sigmoid")
+            return torch.sigmoid(x)
+
 class Mixup(object):
     def __init__(self, mixup_alpha, random_seed=1234):
         self.mixup_alpha = mixup_alpha
@@ -38,23 +91,26 @@ class Mixup(object):
         return lam, 1 - lam
 
 class Model(nn.Module):
-    def __init__(self,CFG,pretrained=True,path=None,training=True):
+    def __init__(self,CFG,pretrained=False,path=None,training=True):
         super(Model, self).__init__()
         self.model = timm.create_model(
             CFG.model_name,
             pretrained=pretrained, 
             drop_rate=0.2, 
             drop_path_rate=0.2, 
-            in_chans=1,
-            num_classes=0
+            in_chans=1, 
+            global_pool="",
+            num_classes=0,
         )
-        self.model.stem.conv1 = ScaledStdConv2d(1, 16, kernel_size=(3, 3), stride=(2, 1), padding=(1, 1))
         if path is not None:
           self.model.load_state_dict(torch.load(path))
         
         in_features = self.model.num_features
-        self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
-        self.dropout = nn.Dropout(p=0.2)
+        self.fc = nn.Linear(in_features, in_features)
+        self.dropout1 = nn.Dropout(p=0.5)
+        self.dropout2 = nn.Dropout(p=0.5)
+        self.att_block = AttBlockV2(in_features, CFG.CLASS_NUM)
+        #self.dropout = nn.Dropout(p=0.2)
         
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
         self.training = training
@@ -125,10 +181,17 @@ class Model(nn.Module):
             x = self.wavtoimg(x)
         
         x = self.model(x[:,None,:,:])
-        x = self.dropout(x)
-        x = self.fc(x)
+        x = torch.mean(x, dim=2)
+        x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
+        x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
+        x = x1 + x2 #(batch_size, channel(2304), time(47))
+        x = self.dropout1(x).transpose(1, 2)
+        x = F.relu_(self.fc(x)) #(batch_size, channel(2304), time(47))
+        x = self.dropout2(x).transpose(1, 2)
+        (x, norm_att, segmentwise_output) = self.att_block(x, None)
+        segx = segmentwise_output.max(dim=2).values
         if (y is not None)&(w is not None):
-            loss = self.loss_fn(x, y)
+            loss = self.loss_fn(x, y) #+ 0.5*self.loss_fn(segx, y)
             return x, loss
         else:
             return x

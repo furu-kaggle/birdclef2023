@@ -25,4 +25,4 @@ cp src/*.py src/weight/exp/
 cd src/weight
 cp -r exp "$commit_uuid"
 rm exp/*
-kaggle datasets version -m "$commit_message" -r tar
+kaggle datasets create -r tar
