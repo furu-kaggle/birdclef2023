@@ -36,13 +36,13 @@ class CFG:
     lr = 1e-2
 
     #スケジューラーの最小学習率
-    min_lr = 1e-4
+    min_lr = 7e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 30
+    epochs = 35
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -54,7 +54,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_all_60.bin"
+    pretrainpath = "data/pp_nmel128f415fft1024hop320e60/model_0_60.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
@@ -63,12 +63,13 @@ class CFG:
     fold = 0
 
     updater = [
-        15,14,13,12,11,#first 5e
+        30,20,15,13,11,#first 5e
         10,10,10,10,10,#next 5e
-        10,10,10,10,10,#continuous
-        10,10,10,10,10,#continuous
-        9,9,9,8,7, #finetune
-        6,6,5,5,5, #finish
+        9,9,9,9,9,#continuous
+        8,8,8,8,8,#continuous
+        7,7,7,7,7, #finetune
+        6,6,6,6,6, #finish
+        5,5,5,5,5, #finish
     ]
 
     def get_optimizer(model, learning_rate, ratio, decay=0):
@@ -82,7 +83,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=30, 
+            t_initial=35, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
