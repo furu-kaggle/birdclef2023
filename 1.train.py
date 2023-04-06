@@ -98,7 +98,7 @@ def run(foldtrain=False):
         )
         train_loader = DataLoader(
             train_set,
-            batch_size=CFG.batch_size,
+            batch_size=CFG.batch_size if CFG.updater[epoch] <= 30 else CFG.batch_size//2,
             drop_last=True,
             pin_memory=True,
             shuffle = True,
