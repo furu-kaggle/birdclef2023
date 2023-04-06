@@ -42,7 +42,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 35
+    epochs = 80
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -63,13 +63,22 @@ class CFG:
     fold = 0
 
     updater = [
-        30,20,15,13,11,#first 5e
-        10,10,10,10,10,#next 5e
+        30,30,30,20,20,#first 5e
+        15,15,15,15,15,#next 5e
+        14,14,14,14,14,#continuous
+        13,13,13,13,13,#continuous
+        12,12,12,12,12,#continuous
+        11,11,11,11,11,#continuous
+        10,10,10,10,10,#continuous
+        10,10,10,10,10,#continuous
+        10,10,10,10,10,#continuous
         9,9,9,9,9,#continuous
         8,8,8,8,8,#continuous
-        7,7,7,7,7, #finetune
-        6,6,6,6,6, #finish
-        5,5,5,5,5, #finish
+        7,7,7,7,7,#continuous
+        6,6,6,6,6,#continuous
+        5,5,5,5,5,#continuous
+        5,5,5,5,5,#continuous
+        5,5,5,5,5,#continuous
     ]
 
     def get_optimizer(model, learning_rate, ratio, decay=0):
@@ -83,7 +92,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=35, 
+            t_initial=100, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 

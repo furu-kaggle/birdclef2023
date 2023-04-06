@@ -81,6 +81,23 @@ class AttBlockV2(nn.Module):
             print("beware of sigmoid")
             return torch.sigmoid(x)
 
+##################################################
+# Binary Focall Loss
+##################################################
+
+class BCEFocalLoss(nn.Module):
+    def __init__(self, gamma=1):
+        super(BCEFocalLoss, self).__init__()
+        self.gamma = gamma
+        self.loss_fct = nn.BCEWithLogitsLoss(reduction='none')
+
+    def forward(self, preds, targets):
+        bce_loss = self.loss_fct(preds, targets)
+        probas = torch.sigmoid(preds)
+        loss = torch.where(targets >= 0.5, (1. - probas)**self.gamma * bce_loss, probas**self.gamma * bce_loss)
+        loss = loss.mean()
+        return loss
+
 class Mixup(object):
     def __init__(self, mixup_alpha, random_seed=1234):
         self.mixup_alpha = mixup_alpha
@@ -113,6 +130,7 @@ class Model(nn.Module):
         #self.dropout = nn.Dropout(p=0.2)
         
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
+        #self.loss_fn = BCEFocalLoss(gamma=2)
         self.training = training
 
         self.mixup = Mixup(mixup_alpha=2.0)

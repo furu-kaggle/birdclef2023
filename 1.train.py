@@ -112,7 +112,7 @@ def run(foldtrain=False):
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
-            if (epoch > 25):
+            if (epoch > 25)&(epoch%5==0):
                 try:
                     savename = CFG.weight_dir + f"model_{epoch}.bin"
                     torch.save(trainer.model.state_dict(),savename)
