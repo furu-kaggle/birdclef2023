@@ -25,22 +25,22 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 8
+    batch_size = 20
 
     #前処理CPUコア数
-    workers = 8
+    workers = 20
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 1e-3
+    lr = 5e-3
 
     #スケジューラーの最小学習率
-    min_lr = 3e-5
+    min_lr = 5e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 25
+    epochs = 60
 
     #lr ratio (best fit 3)
     lr_ratio = 3
@@ -71,7 +71,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=30, 
+            t_initial=epochs+5, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
