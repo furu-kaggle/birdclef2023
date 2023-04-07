@@ -38,7 +38,7 @@ class Mixup(object):
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=True,path=None,training=True):
         super(Model, self).__init__()
-        self.model = timm.create_model(CFG.model_name,pretrained=pretrained, drop_rate=0.2, drop_path_rate=0.2, in_chans=1)
+        self.model = timm.create_model(CFG.model_name,pretrained=pretrained, drop_rate=0.5, drop_path_rate=0.2, in_chans=1)
         self.model.reset_classifier(num_classes=0)
         if path is not None:
           self.model.load_state_dict(torch.load(path))
@@ -83,7 +83,8 @@ class Model(nn.Module):
 
         return V
     
-    def wavtoimg(self, wav):
+    def wavtoimg(self, wav, power=2):
+        self.mel.power = power
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
@@ -93,12 +94,13 @@ class Model(nn.Module):
         if self.training:
             # shape:(b, outm, inm, time)
             # inner mixup (0)
+            power = random.uniform(1.7,2.3)
             lam1, lam2 = self.mixup_in.get_lambda()
-            x1 = lam1*self.wavtoimg(x[:,0,0,:]) + lam2*self.wavtoimg(x[:,0,1,:])
+            x1 = lam1*self.wavtoimg(x[:,0,0,:], power) + lam2*self.wavtoimg(x[:,0,1,:], power)
 
             # inner mixup (1)
             lam1, lam2 = self.mixup_in.get_lambda()
-            x2 = lam1*self.wavtoimg(x[:,1,0,:]) + lam2*self.wavtoimg(x[:,1,1,:])
+            x2 = lam1*self.wavtoimg(x[:,1,0,:], power) + lam2*self.wavtoimg(x[:,1,1,:], power)
             
             # outer mixup
             lam1, lam2 = self.mixup_out.get_lambda()
