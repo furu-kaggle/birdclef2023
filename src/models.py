@@ -38,8 +38,15 @@ class Mixup(object):
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=True,path=None,training=True):
         super(Model, self).__init__()
-        self.model = timm.create_model(CFG.model_name,pretrained=pretrained, drop_rate=0.5, drop_path_rate=0.2, in_chans=1)
-        self.model.reset_classifier(num_classes=0)
+        self.model = timm.create_model(
+            CFG.model_name,
+            pretrained=pretrained, 
+            drop_rate=0.2, 
+            drop_path_rate=0.2, 
+            in_chans=1,
+            global_pool="",
+            num_classes=0
+        )
         if path is not None:
           self.model.load_state_dict(torch.load(path))
         
@@ -90,11 +97,14 @@ class Model(nn.Module):
         img = (dbimg.to(torch.float32) + 80)/80
         return img
 
+    def gem(self, x, p=3, eps=1e-6):
+        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+
     def forward(self, x, y=None, w=None):
         if self.training:
             # shape:(b, outm, inm, time)
             # inner mixup (0)
-            power = random.uniform(1.7,2.3)
+            power = random.uniform(1.9,2.1)
             lam1, lam2 = self.mixup_in.get_lambda()
             x1 = lam1*self.wavtoimg(x[:,0,0,:], power) + lam2*self.wavtoimg(x[:,0,1,:], power)
 
@@ -110,6 +120,7 @@ class Model(nn.Module):
             x = self.wavtoimg(x)
         
         x = self.model(x[:,None,:,:])
+        x = self.gem(x)[:,:,0,0]
         x = self.dropout(x)
         x = self.fc(x)
         if (y is not None)&(w is not None):

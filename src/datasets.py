@@ -44,6 +44,15 @@ train_aug = AA.Compose(
             max_snr_in_db=10,
             p=0.75,
         ),
+        AA.AddGaussianSNR(
+            min_snr_in_db=5.0,max_snr_in_db=10.0,p=0.25
+        ),
+        AA.Shift(
+            min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
+        ),
+        AA.LowPassFilter(
+            min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
+        )
     ]
 )
 
@@ -120,7 +129,7 @@ class WaveformDataset(Dataset):
 
         #augemnt
         if (self.train)&(random.uniform(0,1) < row.weight):
-            data = self.aug(samples=data, sample_rate=sr)
+             data = self.aug(samples=data, sample_rate=sr)
 
         #test datasetの最大長
         max_sec = len(data)//sr 
