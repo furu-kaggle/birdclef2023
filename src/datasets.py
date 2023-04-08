@@ -85,15 +85,17 @@ class WaveformDataset(Dataset):
         self.id2record = sdf.groupby("label_id").sort_index.apply(list)
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
-        if len(y) < length:
+        if len(y) < length//2:
             if is_train:
-                wid = length - len(y)
-                start = np.random.randint(0, wid)
+                wid = length//2 - len(y)
+                start = np.random.randint(length//2, length//2 + wid)
                 y_cp = np.zeros(length,dtype=np.float32)
                 y_cp[start : start + len(y)] = y
                 y = y_cp
             else:
                 y = np.concatenate([y, np.zeros(length - len(y))])
+        elif len(y) < length:
+            y = np.concatenate([y, np.zeros(length - len(y))])
 
         elif len(y) > length:
             if not is_train:

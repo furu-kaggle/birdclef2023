@@ -59,7 +59,7 @@ def run(foldtrain=False):
         )
         valid_loader = DataLoader(
             valid_set,
-            batch_size=CFG.batch_size//2,
+            batch_size=CFG.batch_size,
             pin_memory=True,
             shuffle = False,
             drop_last=True,
@@ -143,8 +143,6 @@ pathdf = pd.DataFrame(glob.glob("/home/furugori/train*/train*/**/XC*.*"),columns
 pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".mp3","").replace(".ogg",""))
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)
-
-print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio_paths"]])
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 

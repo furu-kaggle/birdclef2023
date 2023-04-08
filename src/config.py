@@ -40,7 +40,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 60
+    epochs = 30
 
     #lr ratio (best fit 3)
     lr_ratio = 3
