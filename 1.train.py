@@ -68,23 +68,7 @@ def run(foldtrain=False):
 
     else:
         train = df
-    
-
-    train_set = WaveformDataset(
-        CFG = CFG,
-        df=train,
-        smooth=CFG.smooth,
-        period = CFG.period
-    )
-    train_loader = DataLoader(
-          train_set,
-          batch_size=CFG.batch_size,
-          drop_last=True,
-          pin_memory=True,
-          shuffle = True,
-          num_workers=CFG.workers,
-    )
-    
+        
     optimizer = CFG.get_optimizer(
         model, 
         CFG.lr, 
@@ -107,6 +91,22 @@ def run(foldtrain=False):
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
+        model.factor = CFG.factors[epoch]
+        train_set = WaveformDataset(
+            CFG = CFG,
+            df=train,
+            smooth=CFG.smooth,
+            period = int(5 * CFG.factors[epoch])
+        )
+        batch_factor = min(2, int(15/CFG.factors[epoch]))
+        train_loader = DataLoader(
+            train_set,
+            batch_size=CFG.batch_size*batch_factor ,
+            drop_last=True,
+            pin_memory=True,
+            shuffle = True,
+            num_workers=CFG.workers *batch_factor,
+        )
         trainer.train_one_cycle(train_loader,epoch)
         if foldtrain:
             trainer.valid_one_cycle(valid_loader,epoch)

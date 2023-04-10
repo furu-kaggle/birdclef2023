@@ -26,14 +26,45 @@ import sklearn.metrics
 
 import timm
 
+
+def gem(x, p=3, eps=1e-6):
+    return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+
+class GeM(nn.Module):
+    def __init__(self, p=3, eps=1e-6):
+        super(GeM, self).__init__()
+        self.p = Parameter(torch.ones(1) * p)
+        self.eps = eps
+
+    def forward(self, x):
+        ret = gem(x, p=self.p, eps=self.eps)
+        return ret
+
+    def __repr__(self):
+        return (
+            self.__class__.__name__
+            + "("
+            + "p="
+            + "{:.4f}".format(self.p.data.tolist()[0])
+            + ", "
+            + "eps="
+            + str(self.eps)
+            + ")"
+        )
+
 class Mixup(object):
     def __init__(self, mixup_alpha, random_seed=1234):
         self.mixup_alpha = mixup_alpha
         self.random_state = np.random.RandomState(random_seed)
 
-    def get_lambda(self):
-        lam = self.random_state.beta(self.mixup_alpha, self.mixup_alpha, 1)[0]
-        return lam, 1 - lam
+    def get_lambda(self, batch_size):
+        lams = []
+        inv_lams = []
+        for _ in range(batch_size):
+            lam = self.random_state.beta(self.mixup_alpha, self.mixup_alpha, 1)[0]
+            lams.append(lam)
+            inv_lams.append(1.0-lam)
+        return torch.tensor(lams, dtype=torch.float32), torch.tensor(inv_lams, dtype=torch.float32)
 
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=True,path=None,training=True):
@@ -59,6 +90,8 @@ class Model(nn.Module):
 
         self.mixup_in = Mixup(mixup_alpha=2.0)
         self.mixup_out = Mixup(mixup_alpha=2.0)
+
+        self.gem = GeM()
         
         #wav to image helper
         self.mel = torchaudio.transforms.MelSpectrogram(
@@ -73,6 +106,8 @@ class Model(nn.Module):
             mel_scale = 'htk')
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
+        self.factor = 6
+        self.frame = 500
         
     def torch_mono_to_color(self, X, eps=1e-6, mean=None, std=None):
         mean = mean or X.mean()
@@ -97,29 +132,50 @@ class Model(nn.Module):
         img = (dbimg.to(torch.float32) + 80)/80
         return img
 
-    def gem(self, x, p=3, eps=1e-6):
-        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
-
     def forward(self, x, y=None, w=None):
         if self.training:
             # shape:(b, outm, inm, time)
             # inner mixup (0)
             power = random.uniform(1.9,2.1)
-            lam1, lam2 = self.mixup_in.get_lambda()
-            x1 = lam1*self.wavtoimg(x[:,0,0,:], power) + lam2*self.wavtoimg(x[:,0,1,:], power)
-
+            batch_size = x.shape[0]
+            lam1, lam2 = self.mixup_out.get_lambda(batch_size)
+            lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+            x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
+            y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
             # inner mixup (1)
-            lam1, lam2 = self.mixup_in.get_lambda()
-            x2 = lam1*self.wavtoimg(x[:,1,0,:], power) + lam2*self.wavtoimg(x[:,1,1,:], power)
+            #lam1, lam2 = self.mixup_in.get_lambda()
+            #x2 = lam1*self.wavtoimg(x[:,1,0,:], power) + lam2*self.wavtoimg(x[:,1,1,:], power)
             
             # outer mixup
-            lam1, lam2 = self.mixup_out.get_lambda()
-            x = lam1*x1 + lam2*x2
-            y = lam1*y[:,0,:] + lam2*y[:,1,:]
+            #lam1, lam2 = self.mixup_out.get_lambda()
+            #x = lam1*x1 + lam2*x2
         else:
             x = self.wavtoimg(x)
-        
-        x = self.model(x[:,None,:,:])
+        x  = x[:,None,:,:-1]
+        if  self.training:
+            x_mix = torch.zeros_like(x).to(x.device)
+            perms = torch.randperm(self.factor).to(x.device)
+            for i, perm in enumerate(perms):
+                x_mix[:,:,:,i*self.frame:(i+1)*self.frame] = x[:,:,:,perm*self.frame:(perm+1)*self.frame]
+
+            lam1, lam2 = self.mixup_in.get_lambda(batch_size)
+            lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+            x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
+            
+            #print(x.shape)
+            b, c, f, t = x.shape
+            x = x.permute(0, 3, 2, 1)
+            x = x.reshape(b*self.factor, t//self.factor, f, c)
+            x = x.permute(0, 3, 2, 1)
+            #print(x.shape)
+            x = self.model(x)
+            b, c, f, t = x.shape
+            x = x.permute(0, 3, 2, 1)
+            x = x.reshape(b//self.factor, t*self.factor, f, c)
+            x = x.permute(0, 3, 2, 1)
+        else:
+            x = self.model(x)
+
         x = self.gem(x)[:,:,0,0]
         x = self.dropout(x)
         x = self.fc(x)

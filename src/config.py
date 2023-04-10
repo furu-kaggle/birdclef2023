@@ -12,7 +12,7 @@ from madgrad import MADGRAD
 class CFG:
     #image parameter
     sr = 32000
-    period = 10
+    period = 30
     n_mel = 128
     fmin = 50
     fmax = 14000
@@ -25,25 +25,28 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 20
+    batch_size = 10
 
     #前処理CPUコア数
-    workers = 20
+    workers = 10
 
     #学習率 (best range 5e-9~2e-4)
     lr = 5e-3
 
     #スケジューラーの最小学習率
-    min_lr = 5e-5
+    min_lr = 1e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 30
+    epochs = 35
+
+    #factor update
+    factors = list([15,14,13,12,11,10,10,9,9,8,8,7,7,6,6]) + list([max(1, 6 - i//3) for i in range(25)])
 
     #lr ratio (best fit 3)
-    lr_ratio = 3
+    lr_ratio = 5
 
     #label smoothing rate
     smooth = 0.005

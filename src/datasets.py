@@ -121,11 +121,17 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
-        #duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
-        #訓練時にはランダムにスタートラインを変える(time shift augmentations)
-        offset = 0
+        if (self.train)&(self.period >= 30):
+            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
+            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
+            if (self.train)&(duration_seconds > max(35, self.period + 5)):
+                offset = random.uniform(0, duration_seconds - self.period)
+            else:
+                offset = 0
+        else:
+            offset = 0
         #データ読み込み
-        data, sr = librosa.load(row.audio_paths, sr=32000, offset=offset, duration=30, mono=True)
+        data, sr = librosa.load(row.audio_paths, sr=32000, offset=offset, duration=self.period, mono=True)
 
         #augemnt
         if (self.train)&(random.uniform(0,1) < row.weight):
@@ -137,21 +143,22 @@ class WaveformDataset(Dataset):
         max_sec = 1 if max_sec==0 else max_sec
         
         #データを5秒間隔でかつ7秒幅を取って区切る
-        datas = [data[int(max(0, i) * sr):int(min(max_sec, i + self.period) * sr)] for i in range(0, max_sec, self.period)]
+        #datas = [data[int(max(0, i) * sr):int(min(max_sec, i + self.period) * sr)] for i in range(0, max_sec, self.period)]
 
         #端は1秒短くなるので埋める
-        datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period,is_train=self.train)
+        data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
+        #datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period,is_train=self.train)
         #if (self.train)&(max_sec > self.period):
             #Resampling (後ろから10秒間リサンプリングする)
             #datas[-1] = librosa.load(row.audio_paths, sr=32000, offset=duration_seconds - 10, duration=10, mono=True)[0]
         #else:
-        datas[-1] = self.crop_or_pad(datas[-1] , length=sr*self.period,is_train=self.train)
+        #datas[-1] = self.crop_or_pad(datas[-1] , length=sr*self.period,is_train=self.train)
 
-        datas = np.stack(datas)
-        if (self.train):
-            datas = datas[np.random.choice(len(datas),size=2)] #2つmixup用にサンプリング
-        else:
-            datas = datas[0]
+        #datas = np.stack(datas)
+        #if (self.train):
+        #    datas = datas[np.random.choice(len(datas),size=2)] #2つmixup用にサンプリング
+        #else:
+        #    datas = datas[0]
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
         if row.label_id != -1:
@@ -159,7 +166,7 @@ class WaveformDataset(Dataset):
         if row.sec_num != 0:
             labels[row.labels_id] = self.seclabelp
 
-        return datas, labels
+        return data, labels
     
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
