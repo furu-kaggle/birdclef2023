@@ -27,8 +27,7 @@ import sklearn.metrics
 import timm
 
 
-def gem(x, p=3, eps=1e-6):
-    return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+
 
 class GeM(nn.Module):
     def __init__(self, p=3, eps=1e-6):
@@ -36,8 +35,11 @@ class GeM(nn.Module):
         self.p = Parameter(torch.ones(1) * p)
         self.eps = eps
 
+    def gem(x, p=3, eps=1e-6):
+        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+
     def forward(self, x):
-        ret = gem(x, p=self.p, eps=self.eps)
+        ret = self.gem(x, p=self.p, eps=self.eps)
         return ret
 
     def __repr__(self):
@@ -142,13 +144,6 @@ class Model(nn.Module):
             lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
             x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
             y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
-            # inner mixup (1)
-            #lam1, lam2 = self.mixup_in.get_lambda()
-            #x2 = lam1*self.wavtoimg(x[:,1,0,:], power) + lam2*self.wavtoimg(x[:,1,1,:], power)
-            
-            # outer mixup
-            #lam1, lam2 = self.mixup_out.get_lambda()
-            #x = lam1*x1 + lam2*x2
         else:
             x = self.wavtoimg(x)
         x  = x[:,None,:,:-1]

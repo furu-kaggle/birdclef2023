@@ -142,23 +142,7 @@ class WaveformDataset(Dataset):
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
         
-        #データを5秒間隔でかつ7秒幅を取って区切る
-        #datas = [data[int(max(0, i) * sr):int(min(max_sec, i + self.period) * sr)] for i in range(0, max_sec, self.period)]
-
-        #端は1秒短くなるので埋める
         data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
-        #datas[0] = self.crop_or_pad(datas[0] , length=sr*self.period,is_train=self.train)
-        #if (self.train)&(max_sec > self.period):
-            #Resampling (後ろから10秒間リサンプリングする)
-            #datas[-1] = librosa.load(row.audio_paths, sr=32000, offset=duration_seconds - 10, duration=10, mono=True)[0]
-        #else:
-        #datas[-1] = self.crop_or_pad(datas[-1] , length=sr*self.period,is_train=self.train)
-
-        #datas = np.stack(datas)
-        #if (self.train):
-        #    datas = datas[np.random.choice(len(datas),size=2)] #2つmixup用にサンプリング
-        #else:
-        #    datas = datas[0]
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
         if row.label_id != -1:
