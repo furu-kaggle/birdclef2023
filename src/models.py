@@ -114,6 +114,8 @@ class Model(nn.Module):
         
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
         self.training = training
+        self.factor = 6
+        self.frame = 500
 
         self.mixup = Mixup(mixup_alpha=2.0)
 
@@ -150,7 +152,8 @@ class Model(nn.Module):
 
         return V
     
-    def wavtoimg(self, wav):
+    def wavtoimg(self, wav, power=2):
+        self.mel.power = power
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
@@ -166,21 +169,36 @@ class Model(nn.Module):
         if self.training:
             # shape:(b, outm, inm, time)
             # inner mixup (0)
-            lam1, lam2 = self.mixup.get_lambda()
-            x1 = lam1*self.wavtoimg(x[:,0,0,:]) + lam2*self.wavtoimg(x[:,0,1,:])
-
-            # inner mixup (1)
-            lam1, lam2 = self.mixup.get_lambda()
-            x2 = lam1*self.wavtoimg(x[:,1,0,:]) + lam2*self.wavtoimg(x[:,1,1,:])
-            
-            # outer mixup
-            lam1, lam2 = self.mixup.get_lambda()
-            x = lam1*x1 + lam2*x2
-            y = lam1*y[:,0,:] + lam2*y[:,1,:]
+            power = random.uniform(1.9,2.1)
+            batch_size = x.shape[0]
+            lam1, lam2 = self.mixup_out.get_lambda(batch_size)
+            lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+            x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
+            y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
         else:
             x = self.wavtoimg(x)
-        
-        x = self.model(x[:,None,:,:])
+        x  = x[:,None,:,:-1]
+        if  self.training:
+            x_mix = torch.zeros_like(x).to(x.device)
+            perms = torch.randperm(self.factor).to(x.device)
+            for i, perm in enumerate(perms):
+                x_mix[:,:,:,i*self.frame:(i+1)*self.frame] = x[:,:,:,perm*self.frame:(perm+1)*self.frame]
+
+            lam1, lam2 = self.mixup_in.get_lambda(batch_size)
+            lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+            x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
+            
+            #print(x.shape)
+            b, c, f, t = x.shape
+            x = x.permute(0, 3, 2, 1)
+            x = x.reshape(b*self.factor, t//self.factor, f, c)
+            x = x.permute(0, 3, 2, 1)
+            #print(x.shape)
+            x = self.model(x)
+            b, c, f, t = x.shape
+            x = x.permute(0, 3, 2, 1)
+            x = x.reshape(b//self.factor, t*self.factor, f, c)
+            x = x.permute(0, 3, 2, 1)
         x = torch.mean(x, dim=2)
         x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
         x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)

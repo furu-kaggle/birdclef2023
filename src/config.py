@@ -12,7 +12,7 @@ from madgrad import MADGRAD
 class CFG:
     #image parameter
     sr = 32000
-    period = 10
+    period = 30
     n_mel = 128
     fmin = 50
     fmax = 14000
@@ -27,10 +27,10 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 30
+    batch_size = 15
 
     #前処理CPUコア数
-    workers = 30
+    workers = 15
 
     #学習率 (best range 5e-9~2e-4)
     lr = 1e-2
@@ -42,7 +42,10 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 50
+    epochs = 35
+
+    #factor update
+    factors = list([15,14,13,12,11,10,10,9,9,8,8,7,7,6,6]) + list([max(1, 6 - i//3) for i in range(25)])
 
     #lr ratio (best fit 3)
     lr_ratio = 50
@@ -54,26 +57,13 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pp_nmel128f415fft1024hop320e60/model_0_60.bin"
+    pretrainpath = "ppweight_nf1024_hop320_n128_f514/pretrain_weightmodel_all_last.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
 
     #テストfold
     fold = 0
-
-    updater = [
-        60,30,30,30,15,#first 5e
-        15,15,10,10,10,#next 5e
-        9,9,9,9,9,#continuous
-        9,9,9,9,9,#continuous
-        8,8,8,8,8,#continuous
-        8,8,8,8,8,#continuous
-        7,7,7,7,7, #finetune
-        7,7,7,7,7, #finetune
-        6,6,6,6,6, #finish
-        5,5,5,5,5, #finish
-    ]
 
     def get_optimizer(model, learning_rate, ratio, decay=0):
         return  MADGRAD(params=[

@@ -91,18 +91,20 @@ def run(foldtrain=False):
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         train_set = WaveformDataset(
-            CFG = CFG,
-            df=train,
-            smooth=CFG.smooth,
-            period = CFG.updater[epoch]
-        )
+             CFG = CFG,
+             df=train,
+             smooth=CFG.smooth,
+-            period = CFG.updater[epoch]
++            period = int(5 * CFG.factors[epoch])
+         )
++        batch_factor = min(2, int(15/CFG.factors[epoch]))
         train_loader = DataLoader(
             train_set,
-            batch_size=CFG.batch_size if CFG.updater[epoch] <= 30 else CFG.batch_size//2,
+            batch_size=CFG.batch_size*batch_factor,
             drop_last=True,
             pin_memory=True,
             shuffle = True,
-            num_workers=CFG.workers,
+            num_workers=CFG.workers *batch_factor,
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
