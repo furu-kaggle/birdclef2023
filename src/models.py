@@ -26,7 +26,7 @@ import copy, codecs
 import sklearn.metrics
 
 import timm
-from timm.models.nfnet import ScaledStdConv2d
+
 
 def init_layer(layer):
     nn.init.xavier_uniform_(layer.weight)
@@ -86,9 +86,14 @@ class Mixup(object):
         self.mixup_alpha = mixup_alpha
         self.random_state = np.random.RandomState(random_seed)
 
-    def get_lambda(self):
-        lam = self.random_state.beta(self.mixup_alpha, self.mixup_alpha, 1)[0]
-        return lam, 1 - lam
+    def get_lambda(self, batch_size):
+        lams = []
+        inv_lams = []
+        for _ in range(batch_size):
+            lam = self.random_state.beta(self.mixup_alpha, self.mixup_alpha, 1)[0]
+            lams.append(lam)
+            inv_lams.append(1.0-lam)
+        return torch.tensor(lams, dtype=torch.float32), torch.tensor(inv_lams, dtype=torch.float32)
 
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=False,path=None,training=True):
@@ -117,7 +122,8 @@ class Model(nn.Module):
         self.factor = 6
         self.frame = 500
 
-        self.mixup = Mixup(mixup_alpha=2.0)
+        self.mixup_in = Mixup(mixup_alpha=2.0)
+        self.mixup_out = Mixup(mixup_alpha=2.0)
 
         self.freq_mask = ta.transforms.FrequencyMasking(12, iid_masks=True)
         self.time_mask = ta.transforms.TimeMasking(50, iid_masks=True)
@@ -199,6 +205,8 @@ class Model(nn.Module):
             x = x.permute(0, 3, 2, 1)
             x = x.reshape(b//self.factor, t*self.factor, f, c)
             x = x.permute(0, 3, 2, 1)
+        else:
+            x = self.model(x)
         x = torch.mean(x, dim=2)
         x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
         x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
