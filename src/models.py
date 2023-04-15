@@ -111,10 +111,10 @@ class Model(nn.Module):
           self.model.load_state_dict(torch.load(path))
         
         in_features = self.model.num_features
-        self.fc = nn.Linear(in_features, in_features)
+        self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
         self.dropout1 = nn.Dropout(p=0.5)
         self.dropout2 = nn.Dropout(p=0.5)
-        self.att_block = AttBlockV2(in_features, CFG.CLASS_NUM)
+        self.att_block = AttBlockV2(in_features, in_features)
         #self.dropout = nn.Dropout(p=0.2)
         
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
@@ -163,10 +163,10 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
-        if (self.training)&(random.uniform(0,1) < 0.5):
-            img = self.freq_mask(img)
-        if (self.training)&(random.uniform(0,1) < 0.5):
-            img = self.time_mask(img)
+        #if (self.training)&(random.uniform(0,1) < 0.5):
+        #    img = self.freq_mask(img)
+        #if (self.training)&(random.uniform(0,1) < 0.5):
+        #    img = self.time_mask(img)
 
 
         return img
@@ -211,11 +211,11 @@ class Model(nn.Module):
         x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
         x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
         x = x1 + x2 #(batch_size, channel(2304), time(47))
-        x = self.dropout1(x).transpose(1, 2)
-        x = F.relu_(self.fc(x)) #(batch_size, channel(2304), time(47))
-        x = self.dropout2(x).transpose(1, 2)
+        #x = self.dropout1(x).transpose(1, 2)
         (x, norm_att, segmentwise_output) = self.att_block(x, None)
-        segx = segmentwise_output.max(dim=2).values
+        x = self.fc(x) #(batch_size, channel(2304), time(47))
+        #x = self.dropout2(x).transpose(1, 2)
+        #segx = segmentwise_output.max(dim=2).values
         if (y is not None)&(w is not None):
             loss = self.loss_fn(x, y) #+ 0.5*self.loss_fn(segx, y)
             return x, loss

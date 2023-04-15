@@ -97,7 +97,7 @@ def run(foldtrain=False):
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
-        batch_factor = min(2, int(15/CFG.factors[epoch]))
+        batch_factor = min(2, int(12/CFG.factors[epoch]))
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
