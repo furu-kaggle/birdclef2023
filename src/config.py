@@ -13,7 +13,7 @@ class CFG:
     #image parameter
     sr = 32000
     period = 30
-    n_mel = 128
+    n_mel = 64
     fmin = 50
     fmax = 14000
     power = 2
@@ -57,7 +57,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_all_last.bin"
+    pretrainpath = "data/pp_nmel64f415fft1024hl320s30e140/model_0_140.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
