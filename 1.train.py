@@ -142,7 +142,7 @@ def run(foldtrain=False):
                     pass
                     
 pretrain_label = pd.concat([
-    pd.read_csv("data/train2020_noduplicates.csv",index_col=0),
+    #pd.read_csv("data/train2020_noduplicates.csv",index_col=0),
     pd.read_csv("data/train2021_noduplicates.csv",index_col=0),
     pd.read_csv("data/train2022_noduplicates.csv",index_col=0),
 ]).dropna(subset=["primary_label"])
@@ -161,7 +161,7 @@ pretrain_label["secondary_labels"] = pretrain_label.secondary_labels.apply(
     )
 )
 
-train2020 = pd.read_csv("data/train2020_noduplicates.csv",index_col=0)
+#train2020 = pd.read_csv("data/train2020_noduplicates.csv",index_col=0)
 train2021 = pd.read_csv("data/train2021_noduplicates.csv",index_col=0)
 train2022 = pd.read_csv("data/train2022_noduplicates.csv",index_col=0)
  
@@ -170,16 +170,16 @@ pdf["filename_id"] = pdf.audio_paths.apply(lambda x: x.split("/")[-1].split(".")
 train2021 = pd.merge(train2021,pdf,on=["filename_id"])
 train2022 = pd.merge(train2022,pdf,on=["filename_id"])
 
-print(len(train2021),len(train2022))
+#print(len(train2021),len(train2022))
 
-pdf = pd.DataFrame(glob.glob("data/bird**/train_*audio/**/*.mp3"),columns=["audio_paths"])
-pdf["filename_id"] = pdf.audio_paths.apply(lambda x: x.split("/")[-1].split(".")[0])
-train2020 = pd.merge(train2020,pdf,on=["filename_id"])
+#pdf = pd.DataFrame(glob.glob("data/bird**/train_*audio/**/*.mp3"),columns=["audio_paths"])
+#pdf["filename_id"] = pdf.audio_paths.apply(lambda x: x.split("/")[-1].split(".")[0])
+#train2020 = pd.merge(train2020,pdf,on=["filename_id"])
 
-print(len(train2020))
-print(len(train2021)+len(train2022)+len(train2020))
+#print(len(train2020))
+#print(len(train2021)+len(train2022)+len(train2020))
 
-df = pd.concat([train2020,train2021,train2022]).reset_index(drop=True)
+df = pd.concat([train2021,train2022]).reset_index(drop=True)
 df = pd.merge(df.drop(["secondary_labels"],axis=1),pretrain_label,on=["filename_id"])
 
 ex_ids = pd.read_csv("data/train.csv").filename_id.values
@@ -210,10 +210,11 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-CFG.key = "eval"
-CFG.epoch = 3
-run(foldtrain=True)
+# CFG.key = "eval"
+# CFG.epochs = 3
+# CFG.factors = [3,3,3]
+# run(foldtrain=True)
 
 CFG.key = "all"
-CFG.epoch = 30
+CFG.epochs = 30
 run(foldtrain=False)

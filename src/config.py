@@ -34,7 +34,7 @@ class CFG:
     lr = 1e-2
 
     #スケジューラーの最小学習率
-    min_lr = 1e-4
+    min_lr = 5e-4
 
     #ウォームアップステップ
     warmupstep = 0
@@ -46,7 +46,7 @@ class CFG:
     factors = list([10,10,9,9,8,8,7,7,6,6]) + list([max(3, 6 - i//3) for i in range(50)])
 
     #lr ratio (best fit 3)
-    lr_ratio = 5
+    lr_ratio = 1
 
     #label smoothing rate
     smooth = 0.01
