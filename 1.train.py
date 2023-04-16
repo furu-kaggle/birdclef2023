@@ -90,10 +90,14 @@ def run(foldtrain=False):
     )
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
+        downsample_train = pd.concat([
+                train[train['label_id'] == label].sample(min(300, count), random_state=epoch, replace=False)
+                                for label, count in train['label_id'].value_counts().items()             
+        ]).reset_index(drop=True)
         model.factor = CFG.factors[epoch]
         train_set = WaveformDataset(
              CFG = CFG,
-             df=train,
+             df=downsample_train,
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
@@ -163,8 +167,8 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 CFG.key = "all"
 run(foldtrain=False)

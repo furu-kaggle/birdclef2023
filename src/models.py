@@ -27,6 +27,31 @@ import sklearn.metrics
 
 import timm
 
+class GeM(nn.Module):
+    def __init__(self, p=3, eps=1e-6):
+        super(GeM, self).__init__()
+        self.p = Parameter(torch.ones(1) * p)
+        self.eps = eps
+
+    def gem_pooling(self, x, p=3, eps=1e-6):
+        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+
+    def forward(self, x):
+        ret = self.gem_pooling(x, p=self.p, eps=self.eps)
+        return ret
+
+    def __repr__(self):
+        return (
+            self.__class__.__name__
+            + "("
+            + "p="
+            + "{:.4f}".format(self.p.data.tolist()[0])
+            + ", "
+            + "eps="
+            + str(self.eps)
+            + ")"
+        )
+
 
 def init_layer(layer):
     nn.init.xavier_uniform_(layer.weight)
@@ -112,10 +137,10 @@ class Model(nn.Module):
         
         in_features = self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
-        self.dropout1 = nn.Dropout(p=0.5)
-        self.dropout2 = nn.Dropout(p=0.5)
+        #self.dropout1 = nn.Dropout(p=0.5)
+        #self.dropout2 = nn.Dropout(p=0.5)
         self.att_block = AttBlockV2(in_features, in_features)
-        #self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=0.2)
         
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
         self.training = training
@@ -141,6 +166,7 @@ class Model(nn.Module):
             mel_scale = 'htk')
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
+        self.gem = GeM()
         
     def torch_mono_to_color(self, X, eps=1e-6, mean=None, std=None):
         mean = mean or X.mean()
@@ -163,10 +189,11 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
-        #if (self.training)&(random.uniform(0,1) < 0.5):
-        #    img = self.freq_mask(img)
-        #if (self.training)&(random.uniform(0,1) < 0.5):
-        #    img = self.time_mask(img)
+        # for _ in range(self.factor):
+        #     if (self.training)&(random.uniform(0,1) < 0.5):
+        #         img = self.freq_mask(img)
+        #     if (self.training)&(random.uniform(0,1) < 0.5):
+        #         img = self.time_mask(img)
 
 
         return img
@@ -207,13 +234,17 @@ class Model(nn.Module):
             x = x.permute(0, 3, 2, 1)
         else:
             x = self.model(x)
-        x = torch.mean(x, dim=2)
-        x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
-        x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
-        x = x1 + x2 #(batch_size, channel(2304), time(47))
+
+        x = self.gem(x)[:,:,0,0]
+        x = self.dropout(x)
+        x = self.fc(x)
+        #x = torch.mean(x, dim=2)
+        #x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
+        #x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
+        #x = x1 + x2 #(batch_size, channel(2304), time(47))
         #x = self.dropout1(x).transpose(1, 2)
-        (x, norm_att, segmentwise_output) = self.att_block(x, None)
-        x = self.fc(x) #(batch_size, channel(2304), time(47))
+        #(x, norm_att, segmentwise_output) = self.att_block(x, None)
+        #x = self.fc(x) #(batch_size, channel(2304), time(47))
         #x = self.dropout2(x).transpose(1, 2)
         #segx = segmentwise_output.max(dim=2).values
         if (y is not None)&(w is not None):

@@ -13,7 +13,7 @@ class CFG:
     #image parameter
     sr = 32000
     period = 30
-    n_mel = 64
+    n_mel = 128
     fmin = 50
     fmax = 14000
     power = 2
@@ -42,10 +42,10 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 35
+    epochs = 40
 
     #factor update
-    factors = list([12,11,10,10,9,9,8,8,7,7,6,6]) + list([max(1, 6 - i//3) for i in range(25)])
+    factors = list([12,11,10,10,9,9,8,8,7,7,6,6]) + list([max(1, 6 - i//5) for i in range(35)])
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -57,7 +57,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pp_nmel64f415fft1024hl320s30e140/model_0_140.bin"
+    pretrainpath = "data/pretrain_weightmodel_all_last.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
@@ -71,7 +71,7 @@ class CFG:
             {"params": model.fc.parameters(),    "lr": learning_rate},
         ],weight_decay=decay)
 
-    def get_scheduler(optimizer, min_lr, epochs, warmupstep=3,warmup_lr_init=1e-5):
+    def get_scheduler(optimizer, min_lr, epochs, warmupstep=0,warmup_lr_init=1e-5):
         # base lr は optimizerを継承
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(

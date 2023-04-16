@@ -44,6 +44,12 @@ train_aug = AA.Compose(
             max_snr_in_db=10,
             p=0.75,
         ),
+        AA.AddBackgroundNoise(
+            sounds_path="data/useesc50",
+            min_snr_in_db=5,
+            max_snr_in_db=10,
+            p=0.75,
+        ),
         AA.AddGaussianSNR(
             min_snr_in_db=5.0,max_snr_in_db=10.0,p=0.25
         ),
