@@ -10,6 +10,7 @@ import soundfile as sf
 import numpy as np
 import ast, joblib
 from pathlib import Path
+import itertools
 
 import librosa.display
 from sklearn import preprocessing
@@ -40,13 +41,32 @@ import timm
 
 from src import Trainer, Model, WaveformDataset, CFG
 
+import warnings
+warnings.filterwarnings("ignore")
+
+from sklearn.model_selection import train_test_split
+def birds_stratified_split(df, target_col, test_size=0.2):
+    class_counts = df[target_col].value_counts()
+    low_count_classes = class_counts[class_counts < 10].index.tolist() ### Birds with single counts
+
+    df['train'] = df[target_col].isin(low_count_classes)
+
+    train_df, val_df = train_test_split(df[~df['train']], test_size=test_size, stratify=df[~df['train']][target_col], random_state=42)
+
+    train_df = pd.concat([train_df, df[df['train']]], axis=0).reset_index(drop=True)
+
+    # Remove the 'valid' column
+    train_df.drop('train', axis=1, inplace=True)
+    val_df.drop('train', axis=1, inplace=True)
+
+    return train_df, val_df
+
 device = torch.device("cuda")
 def run(foldtrain=False):
     model = Model(CFG, path = CFG.pretrainpath).to(device)
     
     if foldtrain:
-        train = df[~df["eval"].astype(bool)].reset_index(drop=True)
-        test =  df[df["eval"].astype(bool)].reset_index(drop=True)
+        train, test = birds_stratified_split(df, 'primary_label', 0.1)
 
         valid_set = WaveformDataset(
             CFG = CFG,
@@ -97,7 +117,7 @@ def run(foldtrain=False):
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
-        batch_factor = min(2, int(12/CFG.factors[epoch]))
+        batch_factor = 1
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
@@ -121,41 +141,68 @@ def run(foldtrain=False):
                 except:
                     pass
                     
+pretrain_label = pd.concat([
+    pd.read_csv("data/train2020_noduplicates.csv",index_col=0),
+    pd.read_csv("data/train2021_noduplicates.csv",index_col=0),
+    pd.read_csv("data/train2022_noduplicates.csv",index_col=0),
+]).dropna(subset=["primary_label"])
+pretrain_label["secondary_labels"] = pretrain_label["secondary_labels"].apply(eval)
+pretrain_label = pretrain_label.groupby("filename_id").agg(
+    primary_labels = ("primary_label","unique"),
+    secondary_labels = ("secondary_labels", list)
+).reset_index()
+pretrain_label["secondary_labels"] = pretrain_label.secondary_labels.apply(
+    lambda x: list(
+        set(
+            list(
+                itertools.chain.from_iterable(x)
+            )
+        )
+    )
+)
 
-df = pd.read_csv("data/train.csv")
-df["labels_id"] = df.labels_id.apply(eval)
+train2020 = pd.read_csv("data/train2020_noduplicates.csv",index_col=0)
+train2021 = pd.read_csv("data/train2021_noduplicates.csv",index_col=0)
+train2022 = pd.read_csv("data/train2022_noduplicates.csv",index_col=0)
+ 
+pdf = pd.DataFrame(glob.glob("data/bird**/train_*audio/**/*.ogg"),columns=["audio_paths"])
+pdf["filename_id"] = pdf.audio_paths.apply(lambda x: x.split("/")[-1].split(".")[0])
+train2021 = pd.merge(train2021,pdf,on=["filename_id"])
+train2022 = pd.merge(train2022,pdf,on=["filename_id"])
 
-submission = pd.read_csv("data/sample_submission.csv")
-unique_key = list(submission.columns[1:])
+print(len(train2021),len(train2022))
+
+pdf = pd.DataFrame(glob.glob("data/bird**/train_*audio/**/*.mp3"),columns=["audio_paths"])
+pdf["filename_id"] = pdf.audio_paths.apply(lambda x: x.split("/")[-1].split(".")[0])
+train2020 = pd.merge(train2020,pdf,on=["filename_id"])
+
+print(len(train2020))
+print(len(train2021)+len(train2022)+len(train2020))
+
+df = pd.concat([train2020,train2021,train2022]).reset_index(drop=True)
+df = pd.merge(df.drop(["secondary_labels"],axis=1),pretrain_label,on=["filename_id"])
+
+ex_ids = pd.read_csv("data/train.csv").filename_id.values
+df = df[~df.filename_id.isin(ex_ids)].reset_index(drop=True)
+print(len(df))
+
+sec_unique = set(df.explode("secondary_labels").dropna(subset=["secondary_labels"]).secondary_labels.unique())
+pri_unique = set(df.explode("primary_labels").dropna(subset=["primary_labels"]).primary_labels.unique())
+unique_key = list(pri_unique|sec_unique)
+print(f"unique_len:{len(unique_key)}")
 
 label2id = {label: label_id for label_id, label in enumerate(sorted(unique_key))}
 id2label = {val: key for key,val in label2id.items()}
 
-# #connect path
-pathdf = pd.DataFrame(glob.glob("data/train_audio/**/*.ogg"),columns=["audio_paths"])
-pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".ogg",""))
-pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
-df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
+df.loc[:,"label_id"] = df.loc[:,"primary_label"].map(label2id)
+df.loc[:,"label_ids"] = df.loc[:,"primary_labels"].apply(lambda x: list(np.vectorize(
+    lambda s: label2id[s])(x)) if len(x)!=0 else -1)
+df.loc[:,"labels_id"] = df.loc[:,"secondary_labels"].apply(lambda x: list(np.vectorize(
+    lambda s: label2id[s])(x)) if len(x)!=0 else -1)
 
-addtrain = pd.read_csv("data/add_train.csv",index_col=0).dropna(subset=["primary_label"])
-addtrain["secondary_labels"] = addtrain["secondary_labels"].apply(eval)
-addtrain.loc[:,"label_id"] = addtrain.loc[:,"primary_label"].map(label2id).fillna(-1).astype(int)
-addtrain.loc[:,"labels_id"] = addtrain.loc[:,"secondary_labels"].apply(lambda x: np.vectorize(
-    lambda s: label2id[s] if s in unique_key else -1)(x) if len(x)!=0 else np.array([-1]))
-addtrain.loc[:,"labels_id"] = addtrain.loc[:,"labels_id"].apply(lambda x: list(x[x != -1]))
-addtrain["sec_num"] = addtrain.loc[:,"labels_id"].apply(len)
-addtrain["eval"] = 0
+df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
 
-pathdf = pd.DataFrame(glob.glob("data/addtrain_audio/XC*.*"),columns=["audio_paths"])
-pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".mp3","").replace(".ogg",""))
-pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
-addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)
-
-print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio_paths"]])
-
-df = pd.concat([df,addtrain]).reset_index(drop=True)
-
-df["weight"] = df["rating"] / df["rating"].max()# * 0.2
+print(df)
 
 #ユニークキー
 CFG.unique_key = unique_key
@@ -164,7 +211,9 @@ CFG.unique_key = unique_key
 CFG.CLASS_NUM = len(unique_key)
 
 CFG.key = "eval"
+CFG.epoch = 3
 run(foldtrain=True)
 
 CFG.key = "all"
+CFG.epoch = 30
 run(foldtrain=False)

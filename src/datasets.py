@@ -134,7 +134,7 @@ class WaveformDataset(Dataset):
         data, sr = librosa.load(row.audio_paths, sr=32000, offset=offset, duration=self.period, mono=True)
 
         #augemnt
-        if (self.train)&(random.uniform(0,1) < row.weight):
+        if (self.train)&(random.uniform(0,1) < 0.1):
              data = self.aug(samples=data, sample_rate=sr)
 
         #test datasetの最大長
@@ -158,8 +158,8 @@ class WaveformDataset(Dataset):
         if self.train:
             if row.label_id in list(self.mixup_idlist.keys()):
                 #FMからペアとなるラベルIDを取得
-                pair_label_id = np.random.choice(self.mixup_idlist[row.label_id])
-                pair_idx = np.random.choice(self.id2record[pair_label_id])
+                #pair_label_id = np.random.choice(self.mixup_idlist[row.label_id])
+                pair_idx = np.random.choice(len(self.df))
                 row2 = self.df.iloc[pair_idx]
                 audio2, label2 = self.load_audio(row)
                 audio = np.stack([audio1,audio2])
