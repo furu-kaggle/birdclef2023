@@ -100,7 +100,7 @@ def run(foldtrain=False):
             CFG = CFG,
             df=downsample_train,
             smooth=CFG.smooth,
-            period = int(5 * CFG.factors[epoch])
+            period = max(30, int(5 * CFG.factors[epoch]))
         )
         batch_factor = min(2, int(15/CFG.factors[epoch]))
         train_loader = DataLoader(

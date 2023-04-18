@@ -156,6 +156,8 @@ class Model(nn.Module):
             lam1, lam2 = self.mixup_in.get_lambda(batch_size)
             lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
             x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
+
+            x  = x[:,:,:,:self.factor*self.frame]
             
             #print(x.shape)
             b, c, f, t = x.shape
