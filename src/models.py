@@ -67,7 +67,7 @@ class Mixup(object):
         return torch.tensor(lams, dtype=torch.float32), torch.tensor(inv_lams, dtype=torch.float32)
 
 class Model(nn.Module):
-    def __init__(self,CFG,pretrained=False,path=None,training=True):
+    def __init__(self,CFG,pretrained=True,path=None,training=True):
         super(Model, self).__init__()
         self.model = timm.create_model(
             CFG.model_name,
