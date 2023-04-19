@@ -40,10 +40,10 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 40
+    epochs = 60
 
     #factor update
-    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
+    factors = list([15,14,13,12,11,10,10,9,9,9,9,8,8,8,8,8,7,7,7,7,7,6,6,6,6,6]) + list([max(1, 6 - i//5) for i in range(35)])
 
     #lr ratio (best fit 3)
     lr_ratio = 5

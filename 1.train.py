@@ -154,6 +154,10 @@ df = pd.concat([df,addtrain]).reset_index(drop=True)
 
 df["weight"] = df["rating"] / df["rating"].max() #* 0.2
 
+loopaugdf = pd.read_csv("data/loopaugdf.csv")
+
+df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)
+
 #ユニークキー
 CFG.unique_key = unique_key
 

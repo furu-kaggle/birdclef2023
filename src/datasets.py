@@ -127,7 +127,18 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
-        if (self.train)&(self.period >= 30):
+        if (self.train)&(row.sec > 10):
+            if row["10sloopflg"]:
+                shift_level = 10
+            elif row["5sloopflg"]:
+                shift_level = 5
+            else:
+                shift_level = 0
+        else:
+            shift_level = 0
+
+
+        if (self.train)&(self.period >= 40):
             duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
             #訓練時にはランダムにスタートラインを変える(time shift augmentations)
             if (self.train)&(duration_seconds > max(35, self.period + 5)):
@@ -138,6 +149,10 @@ class WaveformDataset(Dataset):
             offset = 0
         #データ読み込み
         data, sr = librosa.load(row.audio_paths, sr=32000, offset=offset, duration=self.period, mono=True)
+
+        if (self.train)&(offset < 5)&(shift_level >= 5):
+            stride = int(sr*(shift_level-offset))
+            data = np.roll(data, -stride)
 
         #augemnt
         if (self.train)&(random.uniform(0,1) < row.weight):
