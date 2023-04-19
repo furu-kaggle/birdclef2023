@@ -27,13 +27,13 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 15
+    batch_size = 30
 
     #前処理CPUコア数
-    workers = 15
+    workers = 30
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 5e-3
+    lr = 1e-2
 
     #スケジューラーの最小学習率
     min_lr = 1e-4
@@ -45,7 +45,7 @@ class CFG:
     epochs = 40
 
     #factor update
-    factors = list([12,11,10,10,9,9,8,8,7,7,6,6]) + list([max(1, 6 - i//5) for i in range(35)])
+    factors = list([6 for i in range(10)]) + list([max(1, 6 - i//3) for i in range(epochs)])
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -61,9 +61,6 @@ class CFG:
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
-
-    #テストfold
-    fold = 0
 
     def get_optimizer(model, learning_rate, ratio, decay=0):
         return  MADGRAD(params=[

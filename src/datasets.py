@@ -127,24 +127,16 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
-        if (self.train)&(self.period >= 30):
-            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
-            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
-            if (self.train)&(duration_seconds > max(35, self.period + 5)):
-                offset = random.uniform(0, duration_seconds - self.period)
-            else:
-                offset = 0
-        else:
-            offset = 0
         #データ読み込み
-        data, sr = librosa.load(row.audio_paths, sr=32000, offset=offset, duration=self.period, mono=True)
+        data, sr = librosa.load(row.audio_paths, sr=32000, offset=row.start_sec, duration=self.period, mono=True)
 
         #augemnt
         if (self.train)&(random.uniform(0,1) < row.weight):
              data = self.aug(samples=data, sample_rate=sr)
 
         #test datasetの最大長
-        max_sec = len(data)//sr 
+        max_sec = len(data)//sr
+        
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
         

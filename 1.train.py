@@ -48,6 +48,9 @@ def run(foldtrain=False):
         train = df[~df["eval"].astype(bool)].reset_index(drop=True)
         test =  df[df["eval"].astype(bool)].reset_index(drop=True)
 
+        #0sのみ利用
+        test = test[test.start_sec==0].reset_index(drop=True)
+
         valid_set = WaveformDataset(
             CFG = CFG,
             df=test,
@@ -99,16 +102,15 @@ def run(foldtrain=False):
              CFG = CFG,
              df=downsample_train,
              smooth=CFG.smooth,
-             period = int(5 * CFG.factors[epoch])
+             period = 30
          )
-        batch_factor = min(2, int(12/CFG.factors[epoch]))
         train_loader = DataLoader(
             train_set,
-            batch_size=CFG.batch_size*batch_factor,
+            batch_size=CFG.batch_size,
             drop_last=True,
             pin_memory=True,
             shuffle = True,
-            num_workers=CFG.workers *batch_factor,
+            num_workers=CFG.workers,
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
@@ -141,6 +143,10 @@ pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].rep
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
 
+df["start_sec"] = df.sec.apply(lambda x: [s for s in range(0, max(1,int(x)-1), 30)])
+df = df.explode("start_sec").reset_index(drop=True)
+df["unique_id"] = df["filename_id"] + "_" + df["start_sec"].astype(str)
+
 addtrain = pd.read_csv("data/add_train.csv",index_col=0).dropna(subset=["primary_label"])
 addtrain["secondary_labels"] = addtrain["secondary_labels"].apply(eval)
 addtrain.loc[:,"label_id"] = addtrain.loc[:,"primary_label"].map(label2id).fillna(-1).astype(int)
@@ -154,10 +160,13 @@ pathdf = pd.DataFrame(glob.glob("data/addtrain_audio/XC*.*"),columns=["audio_pat
 pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".mp3","").replace(".ogg",""))
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)
+addtrain["start_sec"] = 0
 
 print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio_paths"]])
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
+
+print(df)
 
 df["weight"] = df["rating"] / df["rating"].max()# * 0.2
 
@@ -167,8 +176,8 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-# CFG.key = "eval"
-# run(foldtrain=True)
+CFG.key = "eval"
+run(foldtrain=True)
 
 CFG.key = "all"
 run(foldtrain=False)

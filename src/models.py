@@ -59,52 +59,6 @@ def init_layer(layer):
     if hasattr(layer, "bias"):
         if layer.bias is not None:
             layer.bias.data.fill_(0.)
-            
-class AttBlockV2(nn.Module):
-    def __init__(self,
-                 in_features: int,
-                 out_features: int,
-                 activation="linear"):
-        super().__init__()
-
-        self.activation = activation
-        self.att = nn.Conv1d(
-            in_channels=in_features,
-            out_channels=out_features,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias=True)
-        self.cla = nn.Conv1d(
-            in_channels=in_features,
-            out_channels=out_features,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias=True)
-
-        self.init_weights()
-
-    def init_weights(self):
-        init_layer(self.att)
-        init_layer(self.cla)
-
-    def forward(self, x, mask=None):
-        # x: (bs, channel(2304), n_time(47))
-        norm_att = torch.softmax(torch.tanh(self.att(x)), dim=-1) #(bs, class(2304 to 264),time(47))
-        #ここでtimeにマスクすれば良い？
-        if mask is not None:
-            norm_att = norm_att * mask[:,None,:]
-        cla = self.nonlinear_transform(self.cla(x)) #(bs, class(2304 to 264),time(47))
-        x = torch.sum(norm_att * cla, dim=2) #(bs, class(2304 to 264)) from time(47).sum()
-        return x, norm_att, cla
-
-    def nonlinear_transform(self, x):
-        if self.activation == 'linear':
-            return x
-        elif self.activation == 'sigmoid':
-            print("beware of sigmoid")
-            return torch.sigmoid(x)
 
 class Mixup(object):
     def __init__(self, mixup_alpha, random_seed=1234):
@@ -137,21 +91,15 @@ class Model(nn.Module):
         
         in_features = self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
-        #self.dropout1 = nn.Dropout(p=0.5)
-        #self.dropout2 = nn.Dropout(p=0.5)
-        self.att_block = AttBlockV2(in_features, in_features)
         self.dropout = nn.Dropout(p=0.2)
         
-        self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
+        self.loss_fn = nn.BCEWithLogitsLoss()
         self.training = training
         self.factor = 6
         self.frame = 500
 
         self.mixup_in = Mixup(mixup_alpha=2.0)
         self.mixup_out = Mixup(mixup_alpha=2.0)
-
-        self.freq_mask = ta.transforms.FrequencyMasking(12, iid_masks=True)
-        self.time_mask = ta.transforms.TimeMasking(50, iid_masks=True)
         
         #wav to image helper
         self.mel = torchaudio.transforms.MelSpectrogram(
@@ -189,19 +137,10 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
-        # for _ in range(self.factor):
-        #     if (self.training)&(random.uniform(0,1) < 0.5):
-        #         img = self.freq_mask(img)
-        #     if (self.training)&(random.uniform(0,1) < 0.5):
-        #         img = self.time_mask(img)
-
-
         return img
 
     def forward(self, x, y=None, w=None):
         if self.training:
-            # shape:(b, outm, inm, time)
-            # inner mixup (0)
             power = random.uniform(1.9,2.1)
             batch_size = x.shape[0]
             lam1, lam2 = self.mixup_out.get_lambda(batch_size)
@@ -220,7 +159,9 @@ class Model(nn.Module):
             lam1, lam2 = self.mixup_in.get_lambda(batch_size)
             lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
             x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
-            
+
+            x  = x[:,:,:,:self.factor*self.frame]
+
             #print(x.shape)
             b, c, f, t = x.shape
             x = x.permute(0, 3, 2, 1)
@@ -238,17 +179,8 @@ class Model(nn.Module):
         x = self.gem(x)[:,:,0,0]
         x = self.dropout(x)
         x = self.fc(x)
-        #x = torch.mean(x, dim=2)
-        #x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
-        #x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
-        #x = x1 + x2 #(batch_size, channel(2304), time(47))
-        #x = self.dropout1(x).transpose(1, 2)
-        #(x, norm_att, segmentwise_output) = self.att_block(x, None)
-        #x = self.fc(x) #(batch_size, channel(2304), time(47))
-        #x = self.dropout2(x).transpose(1, 2)
-        #segx = segmentwise_output.max(dim=2).values
         if (y is not None)&(w is not None):
-            loss = self.loss_fn(x, y) #+ 0.5*self.loss_fn(segx, y)
+            loss = self.loss_fn(x, y)
             return x, loss
         else:
             return x
