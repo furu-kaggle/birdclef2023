@@ -115,22 +115,6 @@ class Model(nn.Module):
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
         self.gem = GeM()
-        
-    def torch_mono_to_color(self, X, eps=1e-6, mean=None, std=None):
-        mean = mean or X.mean()
-        std = std or X.std()
-        X = (X - mean) / (std + eps)
-
-        _min, _max = X.min(), X.max()
-
-        if (_max - _min) > eps:
-            V = torch.clip(X, _min, _max)
-            V = 255 * (V - _min) / (_max - _min)
-            V = V.to(torch.uint8)
-        else:
-            V = torch.zeros_like(X, dtype=torch.uint8)
-
-        return V
     
     def wavtoimg(self, wav, power=2):
         self.mel.power = power

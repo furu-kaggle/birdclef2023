@@ -128,6 +128,8 @@ class WaveformDataset(Dataset):
 
     def load_audio(self,row):
         #データ読み込み
+        if (row.start_sec >= 30)&(row.start_sec - self.period < 5):
+            row.start_sec = 0
         data, sr = librosa.load(row.audio_paths, sr=32000, offset=row.start_sec, duration=self.period, mono=True)
 
         #augemnt
@@ -136,7 +138,7 @@ class WaveformDataset(Dataset):
 
         #test datasetの最大長
         max_sec = len(data)//sr
-        
+
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
         

@@ -146,6 +146,7 @@ df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset
 df["start_sec"] = df.sec.apply(lambda x: [s for s in range(0, max(1,int(x)-1), 30)])
 df = df.explode("start_sec").reset_index(drop=True)
 df["unique_id"] = df["filename_id"] + "_" + df["start_sec"].astype(str)
+df = df[df.start_sec < 600].reset_index(drop=True)
 
 addtrain = pd.read_csv("data/add_train.csv",index_col=0).dropna(subset=["primary_label"])
 addtrain["secondary_labels"] = addtrain["secondary_labels"].apply(eval)
@@ -176,8 +177,8 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 CFG.key = "all"
 run(foldtrain=False)
