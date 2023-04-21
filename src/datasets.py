@@ -33,25 +33,25 @@ import audiomentations as AA
 train_aug = AA.Compose(
     [
         AA.AddBackgroundNoise(
-            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.5
+            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=3, max_snr_in_db=10, p=0.5
         ),
         AA.AddBackgroundNoise(
-            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.5
+            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=3, max_snr_in_db=10, p=0.5
         ),
         AA.AddBackgroundNoise(
             sounds_path="data/aicrowd2020_noise_30sec/noise_30sec",
-            min_snr_in_db=5,
+            min_snr_in_db=3,
             max_snr_in_db=10,
             p=0.75,
         ),
         AA.AddBackgroundNoise(
             sounds_path="data/useesc50",
-            min_snr_in_db=5,
+            min_snr_in_db=3,
             max_snr_in_db=10,
             p=0.75,
         ),
         AA.AddGaussianSNR(
-            min_snr_in_db=5.0,max_snr_in_db=10.0,p=0.25
+            min_snr_in_db=3.0,max_snr_in_db=10.0,p=0.25
         ),
         AA.Shift(
             min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
@@ -127,10 +127,31 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
+        if (self.train)&(row.sec > 10):
+            if row["10sloopflg"]:
+                shift_level = 10
+            elif row["5sloopflg"]:
+                shift_level = 5
+            else:
+                shift_level = 0
+        else:
+            shift_level = 0
+
+        if (self.train)&(self.period >= 30):
+            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
+            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
+            if (self.train)&(duration_seconds > max(35, self.period + 5)):
+                offset = random.uniform(0, duration_seconds - self.period)
+            else:
+                offset = 0
+        else:
+            offset = 0
         #データ読み込み
-        if (row.start_sec >= 30)&(row.start_sec - self.period < 5):
-            row.start_sec = 0
-        data, sr = librosa.load(row.audio_paths, sr=32000, offset=row.start_sec, duration=self.period, mono=True)
+        data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
+
+        if (self.train)&(offset < 5)&(shift_level >= 5):
+            stride = int(sr*(shift_level-offset))
+            data = np.roll(data, -stride)
 
         #augemnt
         if (self.train)&(random.uniform(0,1) < row.weight):

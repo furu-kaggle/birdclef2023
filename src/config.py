@@ -18,40 +18,49 @@ class CFG:
     fmax = 14000
     power = 2
     top_db = None
+    prilabelp = 1.0
+    seclabelp = 0.5
+    frame = 500
+    augpower_min = 1.9
+    augpower_max = 2.1
+    mixup_in_prob = 0.5
+    backbone_dropout = 0.2
+    backbone_droppath = 0.2
+    head_dropout = 0.2
 
-    time_len = 281
-
+    mixup_alpha_in = 2.0
+    mixup_alpha_out = 2.0
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
     n_fft = 1024
 
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 30
+    batch_size = 15
 
     #前処理CPUコア数
-    workers = 30
+    workers = 15
 
     #学習率 (best range 5e-9~2e-4)
     lr = 1e-2
 
     #スケジューラーの最小学習率
-    min_lr = 1e-4
+    min_lr = 1e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 40
+    epochs = 35
 
     #factor update
-    factors = list([6 for i in range(10)]) + list([max(1, 6 - i//3) for i in range(epochs)])
+    factors = list([15,14,13,12,11,10,9,8,7,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
 
     #lr ratio (best fit 3)
     lr_ratio = 5
 
     #label smoothing rate
-    smooth = 0.01
+    smooth = 0.005
 
     #model name
     model_name = 'eca_nfnet_l0'
