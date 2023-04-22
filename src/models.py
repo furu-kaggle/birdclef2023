@@ -138,7 +138,7 @@ class Model(nn.Module):
         if self.training:
             # shape:(b, outm, inm, time)
             # inner mixup (0)
-            power = random.uniform(1.9,2.1)
+            power = random.uniform(1.5,3.0)
             batch_size = x.shape[0]
             lam1, lam2 = self.mixup_out.get_lambda(batch_size)
             lam1, lam2 = lam1.to(x.device), lam2.to(x.device)

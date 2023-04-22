@@ -92,7 +92,7 @@ def run(foldtrain=False):
     for epoch in range(CFG.epochs):
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         downsample_train = pd.concat([
-                train[train['label_id'] == label].sample(min(100, count), random_state=epoch, replace=False)
+                train[train['label_id'] == label].sample(min(400, count), random_state=epoch, replace=False)
                                 for label, count in train['label_id'].value_counts().items()             
         ]).reset_index(drop=True)
         model.factor = CFG.factors[epoch]
