@@ -71,6 +71,22 @@ def run(foldtrain=False):
 
     else:
         train = df
+
+    primary_counts = train.primary_label.value_counts().reset_index().rename(
+    columns={
+            "primary_label":"train_count",
+            "index":"primary_label"
+        }
+    )
+    primary_counts["sampleweight"] = (1/primary_counts["train_count"])/(1/primary_counts["train_count"]).max()
+    train = pd.merge(train, primary_counts,on=["primary_label"])
+    print(primary_counts)
+    #minor label repeating (focus on smaller sample class)
+    primary_list = primary_counts[primary_counts["train_count"] < 20].primary_label.unique()
+    smaller_df = train[train.primary_label.isin(primary_list)]
+    train = pd.concat([train,smaller_df,smaller_df]).reset_index(drop=True)
+
+    
         
     optimizer = CFG.get_optimizer(
         model, 

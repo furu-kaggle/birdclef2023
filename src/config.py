@@ -36,22 +36,22 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 15
+    batch_size = 14
 
     #前処理CPUコア数
-    workers = 15
+    workers = 14
 
     #学習率 (best range 5e-9~2e-4)
     lr = 1e-2
 
     #スケジューラーの最小学習率
-    min_lr = 1e-5
+    min_lr = 5e-6
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 35
+    epochs = 30
 
     #factor update
     factors = list([15,14,13,12,11,10,9,8,7,6]) + list([max(1, 6 - i//3) for i in range(epochs)])

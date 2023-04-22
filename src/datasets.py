@@ -153,9 +153,13 @@ class WaveformDataset(Dataset):
             stride = int(sr*(shift_level-offset))
             data = np.roll(data, -stride)
 
-        #augemnt
+        #augemnt1
         if (self.train)&(random.uniform(0,1) < row.weight):
              data = self.aug(samples=data, sample_rate=sr)
+
+        if (self.train):
+            if (random.uniform(0,1) < row.sampleweight):
+                data = self.aug(samples=data, sample_rate=sr)
 
         #test datasetの最大長
         max_sec = len(data)//sr
