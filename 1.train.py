@@ -120,6 +120,7 @@ def run(foldtrain=False):
             torch.save(trainer.model.state_dict(),savename)
 
 df = pd.read_csv("data/train.csv")
+df["secondary_labels"] = df["secondary_labels"].apply(eval)
 df["labels_id"] = df.labels_id.apply(eval)
 
 submission = pd.read_csv("data/sample_submission.csv")
@@ -148,11 +149,36 @@ pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].rep
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)
 
-print(addtrain)
-
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 
-df["weight"] = df["rating"] / df["rating"].max() #* 0.2
+df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
+
+pesudodf = pd.read_csv("data/submission.csv")
+pesudodf["filename_id"] = pesudodf.row_id.apply(lambda x: x.split("_")[0])
+pesudodf = pesudodf.merge(df[["filename_id","primary_label","secondary_labels"]].drop_duplicates("filename_id")
+,on=["filename_id"])
+
+#print(pesudodf)
+
+for uk in unique_key:
+    pesudodf.loc[pesudodf.primary_label==uk, uk] = 0
+    pesudodf.loc[pesudodf.secondary_labels.astype(str).str.contains(uk),uk] = 0
+
+#print(pesudodf.secondary_labels.isin([uk]))
+#print(pesudodf.apply(lambda x: x[x.secondary_labels[1]] if len(x.secondary_labels) == 2 else 0,axis=1).describe())
+pesudodf["array_pred"] = pesudodf[unique_key].apply(lambda x: np.array(x)/np.array(x).sum(),axis=1)
+pesudodf = pesudodf.groupby(["filename_id"]).apply(lambda x: x["array_pred"].mean()).reset_index().rename(columns={
+    0:"array_pred"
+})
+
+df = pd.merge(df, pesudodf,on=["filename_id"],how="left")
+
+df.loc[df.array_pred.isnull(),"array_pred"] = df.loc[df.array_pred.isnull(),"array_pred"].apply(lambda x: np.array(list([CFG.smooth])*len(unique_key)))
+
+#print(df["array_pred"].apply(lambda x: x.max()).describe())
+
+#print(df)
+
 
 #ユニークキー
 CFG.unique_key = unique_key
@@ -160,8 +186,8 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 CFG.key = "all"
 run(foldtrain=False)

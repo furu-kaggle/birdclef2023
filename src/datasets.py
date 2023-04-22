@@ -45,7 +45,7 @@ train_aug = AA.Compose(
             p=0.75,
         ),
         AA.AddBackgroundNoise(
-            sounds_path="data/esc50/useesc50",
+            sounds_path="data/useesc50",
             min_snr_in_db=3,
             max_snr_in_db=10,
             p=0.5,
@@ -149,8 +149,10 @@ class WaveformDataset(Dataset):
         max_sec = 1 if max_sec==0 else max_sec
         
         data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
-        
-        labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
+        if self.train:
+            labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + torch.tensor(row.array_pred)#+ self.smooth
+        else:
+            labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32)
         if row.label_id != -1:
             labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
