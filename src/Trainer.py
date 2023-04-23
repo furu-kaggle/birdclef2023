@@ -79,7 +79,7 @@ class Trainer:
             pbar.set_description("[loss %f, lr %e]" % (total_loss / total_nums, self.optimizer.param_groups[0]['lr']))
 
             if  self.scheduler is not None:
-                self.scheduler.step(epoch + idx/len(train_loader))
+                self.scheduler.step(epoch*len(train_loader) + idx)
             
         self.model.eval()
         print(f"epoch:{epoch} train result, loss:{total_loss / total_nums}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))

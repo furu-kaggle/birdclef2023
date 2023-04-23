@@ -76,7 +76,7 @@ def run(foldtrain=False):
     )
     scheduler = CFG.get_scheduler(
         optimizer,
-        epochs=CFG.epochs,
+        steps=len(train)//CFG.batch_size * CFG.epochs//2,
         min_lr=CFG.min_lr,
         warmupstep=CFG.warmupstep
     )
@@ -100,7 +100,8 @@ def run(foldtrain=False):
             CFG = CFG,
             df=downsample_train,
             smooth=CFG.smooth,
-            period = max(30, int(5 * CFG.factors[epoch]))
+            period = max(30, int(5 * CFG.factors[epoch])),
+            factor = CFG.factors[epoch]
         )
         batch_factor = min(2, int(15/CFG.factors[epoch]))
         train_loader = DataLoader(

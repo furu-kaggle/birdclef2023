@@ -72,7 +72,8 @@ class WaveformDataset(Dataset):
                  seclabelp=0.5,
                  mixup_prob = 0.15,
                  smooth=0.005,
-                 train = True
+                 train = True,
+                 factor = 6
                  ):
       
         self.df = df.reset_index(drop=True)
@@ -85,6 +86,7 @@ class WaveformDataset(Dataset):
         self.prilabelp = prilabelp - self.smooth
         self.seclabelp = seclabelp - self.smooth
         self.train = train
+        self.factor = factor
 
         
         #Matrix Factorization (サブラベル同士は相関なしとして扱う)
@@ -154,7 +156,7 @@ class WaveformDataset(Dataset):
         if row.label_id != -1:
             labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
-            labels[row.labels_id] = self.seclabelp
+            labels[row.labels_id] = self.seclabelp * (self.factor/6) if self.factor <= 6 else self.seclabelp
 
         return data, labels
     

@@ -69,14 +69,16 @@ class CFG:
             {"params": model.fc.parameters(),    "lr": learning_rate},
         ],weight_decay=decay)
 
-    def get_scheduler(optimizer, min_lr, epochs, warmupstep=0,warmup_lr_init=5e-5):
+    def get_scheduler(optimizer, min_lr, steps, warmupstep=0,warmup_lr_init=5e-5):
         # base lr は optimizerを継承
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=epochs, 
+            t_initial=steps, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
-            warmup_prefix=True
+            warmup_prefix=True,
+            noise_range_t = (steps//3,steps),
+            cycle_limit=1
         )
