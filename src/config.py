@@ -31,7 +31,7 @@ class CFG:
     workers = 10
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 5e-3
+    lr = 1e-2
 
     #スケジューラーの最小学習率
     min_lr = 1e-5
@@ -49,7 +49,7 @@ class CFG:
     lr_ratio = 5
 
     #label smoothing rate
-    smooth = 0.005
+    smooth = 0.01
 
     #model name
     model_name = 'eca_nfnet_l0'
@@ -80,5 +80,6 @@ class CFG:
             warmup_lr_init=warmup_lr_init, 
             warmup_prefix=True,
             noise_range_t = (steps//3,steps),
+            noise_pct = 0.1,
             cycle_limit=1
         )

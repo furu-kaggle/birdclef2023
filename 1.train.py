@@ -76,7 +76,7 @@ def run(foldtrain=False):
     )
     scheduler = CFG.get_scheduler(
         optimizer,
-        steps=len(train)//CFG.batch_size * CFG.epochs//2,
+        steps=len(train)//CFG.batch_size * 9 + len(train)//CFG.batch_size//2 * (CFG.epochs-9),
         min_lr=CFG.min_lr,
         warmupstep=CFG.warmupstep
     )
@@ -153,7 +153,8 @@ print(addtrain)
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 
-df["weight"] = df["rating"] / df["rating"].max() #* 0.2
+df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
+df["smooth_weight"] = 1 - df["weight"]
 
 #ユニークキー
 CFG.unique_key = unique_key

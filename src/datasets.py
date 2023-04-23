@@ -152,11 +152,11 @@ class WaveformDataset(Dataset):
         
         data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
         
-        labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
+        labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth*row.smooth_weight
         if row.label_id != -1:
             labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
-            labels[row.labels_id] = self.seclabelp * (self.factor/6) if self.factor <= 6 else self.seclabelp
+            labels[row.labels_id] = self.seclabelp #* (self.factor/6) if self.factor <= 6 else self.seclabelp
 
         return data, labels
     
