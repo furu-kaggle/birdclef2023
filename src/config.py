@@ -31,7 +31,7 @@ class CFG:
     workers = 10
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 1e-2
+    lr = 5e-3
 
     #スケジューラーの最小学習率
     min_lr = 1e-5
@@ -49,7 +49,7 @@ class CFG:
     lr_ratio = 5
 
     #label smoothing rate
-    smooth = 0.01
+    smooth = 0.005
 
     #model name
     model_name = 'eca_nfnet_l0'
@@ -60,26 +60,23 @@ class CFG:
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
 
-    #テストfold
-    fold = 0
-
     def get_optimizer(model, learning_rate, ratio, decay=0):
         return  MADGRAD(params=[
             {"params": model.model.parameters(), "lr": learning_rate/ratio},
             {"params": model.fc.parameters(),    "lr": learning_rate},
         ],weight_decay=decay)
 
-    def get_scheduler(optimizer, min_lr, steps, warmupstep=0,warmup_lr_init=5e-5):
+    def get_scheduler(optimizer, min_lr, epochs, warmupstep=0,warmup_lr_init=5e-5):
         # base lr は optimizerを継承
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=steps, 
+            t_initial=epochs, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
             warmup_prefix=True,
-            noise_range_t = (steps//3,steps),
-            noise_pct = 0.1,
-            cycle_limit=1
+            # noise_range_t = (steps//3,steps),
+            # noise_pct = 0.1,
+            # cycle_limit=1
         )

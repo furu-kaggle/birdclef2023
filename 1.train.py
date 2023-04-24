@@ -76,7 +76,7 @@ def run(foldtrain=False):
     )
     scheduler = CFG.get_scheduler(
         optimizer,
-        steps=len(train)//CFG.batch_size * 9 + len(train)//CFG.batch_size//2 * (CFG.epochs-9),
+        epochs=CFG.epochs,
         min_lr=CFG.min_lr,
         warmupstep=CFG.warmupstep
     )
