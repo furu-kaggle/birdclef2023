@@ -38,7 +38,7 @@ from audiomentations import (
 )
 import timm
 
-from src import Trainer, Model, WaveformDataset, CFG
+from src import Trainer, Model, WaveformDataset, CFG, EvalWaveformDataset
 
 device = torch.device("cuda")
 def run(foldtrain=False):
@@ -51,18 +51,14 @@ def run(foldtrain=False):
         #0sのみ利用
         #test = test[test.start_sec==0].reset_index(drop=True)
 
-        valid_set = WaveformDataset(
+        valid_set = EvalWaveformDataset(
             CFG = CFG,
             df=test,
-            smooth=0,
-            mixup_prob=0,
-            seclabelp=1.0,
-            train = False,
             period = 5
         )
         valid_loader = DataLoader(
             valid_set,
-            batch_size=CFG.batch_size//2,
+            batch_size=CFG.batch_size,
             pin_memory=True,
             shuffle = False,
             drop_last=True,
@@ -105,7 +101,7 @@ def run(foldtrain=False):
         model=model,
         optimizer=optimizer,
         scheduler = scheduler,
-        device=device,
+        device=device
     )
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
@@ -199,8 +195,28 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
-# CFG.key = "eval"
-# run(foldtrain=True)
+CFG.id2label = id2label
 
-CFG.key = "all"
+CFG.key = "eval"
+run(foldtrain=True)
+
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)  # type: ignore
+    torch.backends.cudnn.deterministic = True  # type: ignore
+    torch.backends.cudnn.benchmark = True  # type: ignore
+
+set_seed(35)
+CFG.key = "all_35"
+run(foldtrain=False)
+
+set_seed(355)
+CFG.key = "all_355"
+run(foldtrain=False)
+
+set_seed(311)
+CFG.key = "all_311"
 run(foldtrain=False)

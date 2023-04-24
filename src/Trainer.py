@@ -90,29 +90,27 @@ class Trainer:
         """
         self.model.eval()
         self.model.training = False
-        total_loss = 0
-        total_nums = 0
         record = Record(self.CFG)
         
         #get feature vectors array
         pbar = tqdm(enumerate(valid_loader),total=len(valid_loader))
         with torch.no_grad():
-            for idx, (xval, yval, weight) in pbar:
+            for idx, (xval, yp, ys, sc, uid) in pbar:
                 xval = xval.to(self.device, dtype=torch.float)
-                yval = yval.to(self.device, dtype=torch.float)
-                weight = weight.to(self.device, dtype=torch.float)
+                yp = yp.to(self.device, dtype=torch.float)
+                ys = ys.to(self.device, dtype=torch.float)
 
-                pred, loss = self.model(xval, yval, weight)
-                record.update(pred, yval)
-                total_loss += (loss.mean().detach().item() * yval.size(0))
-                total_nums += yval.size(0)
-                pbar.set_description("[loss %f]" % (total_loss / total_nums))
+                pred, pl = self.model(xval, yp)
+                _, sl = self.model(xval, ys)
+                record.eval_update(pred, yp, ys, pl, sl, uid)
+                pbar.set_description("[ploss %f sloss %f]" % (record.get_loss()[0],record.get_loss()[1]))
+        
+        record.get_valdf()
+        #cmAP = record.get_f1score()
+        #print(cmAP)
 
-        cmAP = record.get_f1score()
-        print(cmAP)
-
-        print(f"epoch:{epoch} val result, get_cmAP:{cmAP:.3f}, loss:{total_loss / total_nums}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
-        savename = self.CFG.weight_dir + f"model_{cmAP:.3f}_{self.CFG.key}.bin"
+        print(f"epoch:{epoch} val result, ploss:{record.get_loss()[0]}, sloss:{record.get_loss()[1]}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
+        savename = self.CFG.weight_dir + f"model_{record.get_loss()[0]:.3f}_{self.CFG.key}.bin"
         torch.save(self.model.state_dict(),savename)
         for path in sorted(glob.glob(self.CFG.weight_dir + f"model_*_{self.CFG.key}.bin"), reverse=True)[1:]:
             os.remove(path)
