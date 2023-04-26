@@ -103,7 +103,7 @@ def run(foldtrain=False):
         scheduler = scheduler,
         device=device
     )
-    #trainer.valid_one_cycle(valid_loader, 0)
+    trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         downsample_train = pd.concat([
                 train[train['label_id'] == label].sample(min(300, count), random_state=epoch, replace=False)
