@@ -92,6 +92,8 @@ class Model(nn.Module):
         
         in_features = self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
+        init_layer(self.fc)
+
         self.dropout = nn.Dropout(p=CFG.head_dropout)
         
         self.loss_fn = nn.BCEWithLogitsLoss()

@@ -76,7 +76,7 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
-            pbar.set_description("[loss %f, lr %e]" % (total_loss / total_nums, self.optimizer.param_groups[0]['lr']))
+            pbar.set_description("[loss %f, lr %e last_lr %e]" % (total_loss / total_nums, self.optimizer.param_groups[0]['lr'], self.optimizer.param_groups[-1]['lr']))
 
             if  self.scheduler is not None:
                 self.scheduler.step(epoch + idx/len(train_loader))

@@ -21,12 +21,12 @@ class CFG:
     prilabelp = 1.0
     seclabelp = 0.5
     frame = 500
-    augpower_min = 1.9
-    augpower_max = 2.1
-    mixup_in_prob = 0.5
-    backbone_dropout = 0.2
-    backbone_droppath = 0.2
-    head_dropout = 0.2
+    augpower_min = 1.95
+    augpower_max = 2.05
+    mixup_in_prob = 1.0
+    backbone_dropout = 0.1
+    backbone_droppath = 0.1
+    head_dropout = 0.1
 
     mixup_alpha_in = 2.0
     mixup_alpha_out = 2.0
@@ -42,25 +42,28 @@ class CFG:
     workers = 15
 
     #学習率 (best range 5e-9~2e-4)
-    lr = 1e-2
+    lr = 5e-3
 
     #スケジューラーの最小学習率
-    min_lr = 1e-5
+    min_lr = 5e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 35
+    epochs = 40
 
     #factor update
-    factors = list([15,14,13,12,11,10,9,8,7,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
+    factors = list([12,11,10,10,9,9,8,8,7,7,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
 
     #lr ratio (best fit 3)
-    lr_ratio = 5
+    lr_ratio = 1
 
     #label smoothing rate
-    smooth = 0.005
+    smooth = 0.003
+
+    #random under sampling
+    sample_num = 300
 
     #model name
     model_name = 'eca_nfnet_l0'
@@ -73,8 +76,14 @@ class CFG:
 
     def get_optimizer(model, learning_rate, ratio, decay=0):
         return  MADGRAD(params=[
-            {"params": model.model.parameters(), "lr": learning_rate/ratio},
-            {"params": model.fc.parameters(),    "lr": learning_rate},
+            {"params": model.model.stem.parameters(), "lr": learning_rate/ratio/32},
+            {"params": model.model.stages[0].parameters(), "lr": learning_rate/ratio/16},
+            {"params": model.model.stages[1].parameters(), "lr": learning_rate/ratio/8},
+            {"params": model.model.stages[2].parameters(), "lr": learning_rate/ratio/4},
+            {"params": model.model.stages[3].parameters(), "lr": learning_rate/ratio/2},
+            {"params": model.model.final_conv.parameters(), "lr": learning_rate/ratio},
+            {"params": model.model.final_act.parameters(), "lr": learning_rate/ratio},
+            {"params": model.fc.parameters(),    "lr": learning_rate}
         ],weight_decay=decay)
 
     def get_scheduler(optimizer, min_lr, epochs, warmupstep=0,warmup_lr_init=1e-5):
@@ -82,7 +91,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=epochs+5, 
+            t_initial=epochs, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 

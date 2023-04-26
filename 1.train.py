@@ -94,7 +94,7 @@ def run(foldtrain=False):
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         downsample_train = pd.concat([
-                train[train['label_id'] == label].sample(min(300, count), random_state=epoch, replace=False)
+                train[train['label_id'] == label].sample(min(CFG.sample_num, count), random_state=epoch, replace=False)
                                 for label, count in train['label_id'].value_counts().items()             
         ]).reset_index(drop=True)
         model.factor = CFG.factors[epoch]
@@ -106,7 +106,7 @@ def run(foldtrain=False):
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
-        batch_factor = min(2, int(15/CFG.factors[epoch]))
+        batch_factor = min(2, int(12/CFG.factors[epoch]))
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
@@ -123,7 +123,7 @@ def run(foldtrain=False):
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
-            if (epoch > 25):
+            if (epoch > 25)&(epoch%2==0):
                 try:
                     savename = CFG.weight_dir + f"model_{epoch}.bin"
                     torch.save(trainer.model.state_dict(),savename)
@@ -172,7 +172,7 @@ df = pd.concat([df,addtrain]).reset_index(drop=True)
 
 print(df)
 
-df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
+df["weight"] = df["rating"] / df["rating"].max()
 
 loopaugdf = pd.read_csv("data/loopaugdf.csv")
 df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)
