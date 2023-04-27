@@ -67,22 +67,6 @@ def run(foldtrain=False):
 
     else:
         train = df
-
-    primary_counts = train.primary_label.value_counts().reset_index().rename(
-    columns={
-            "primary_label":"train_count",
-            "index":"primary_label"
-        }
-    )
-    primary_counts["sampleweight"] = (1/primary_counts["train_count"])/(1/primary_counts["train_count"]).max()
-    train = pd.merge(train, primary_counts,on=["primary_label"])
-    print(primary_counts)
-    #minor label repeating (focus on smaller sample class)
-    primary_list = primary_counts[primary_counts["train_count"] < 20].primary_label.unique()
-    smaller_df = train[train.primary_label.isin(primary_list)]
-    train = pd.concat([train,smaller_df,smaller_df]).reset_index(drop=True)
-
-    
         
     optimizer = CFG.get_optimizer(
         model, 
@@ -106,7 +90,7 @@ def run(foldtrain=False):
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         downsample_train = pd.concat([
-                train[train['label_id'] == label].sample(min(300, count), random_state=epoch, replace=False)
+                train[train['label_id'] == label].sample(min(CFG.sample_size, count), random_state=epoch, replace=False)
                                 for label, count in train['label_id'].value_counts().items()             
         ]).reset_index(drop=True)
         model.factor = CFG.factors[epoch]
@@ -158,11 +142,6 @@ pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].rep
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
 
-# df["start_sec"] = df.sec.apply(lambda x: [s for s in range(0, max(1,int(x)-1), 30)])
-# df = df.explode("start_sec").reset_index(drop=True)
-# df["unique_id"] = df["filename_id"] + "_" + df["start_sec"].astype(str)
-# df = df[df.start_sec < 600].reset_index(drop=True)
-
 addtrain = pd.read_csv("data/add_train.csv",index_col=0).dropna(subset=["primary_label"])
 addtrain["secondary_labels"] = addtrain["secondary_labels"].apply(eval)
 addtrain.loc[:,"label_id"] = addtrain.loc[:,"primary_label"].map(label2id).fillna(-1).astype(int)
@@ -184,7 +163,9 @@ df = pd.concat([df,addtrain]).reset_index(drop=True)
 
 print(df)
 
-df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
+df["weight"] = df["rating"] / df["rating"].max()
+
+#df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
 
 loopaugdf = pd.read_csv("data/loopaugdf.csv")
 df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)
@@ -197,8 +178,8 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 def set_seed(seed: int = 42):
     random.seed(seed)

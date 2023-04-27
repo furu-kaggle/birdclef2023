@@ -92,6 +92,7 @@ class Model(nn.Module):
         
         in_features = self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
+        init_layer(self.fc)
         self.dropout = nn.Dropout(p=CFG.head_dropout)
         
         self.loss_fn = nn.BCEWithLogitsLoss()
@@ -128,10 +129,14 @@ class Model(nn.Module):
         if self.training:
             power = random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
             batch_size = x.shape[0]
-            lam1, lam2 = self.mixup_out.get_lambda(batch_size)
-            lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
-            x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
-            y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
+            if (random.uniform(0,1) < self.cfg.mixup_out_prob):
+                lam1, lam2 = self.mixup_out.get_lambda(batch_size)
+                lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+                x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
+                y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
+            else:
+                x = self.wavtoimg(x[:,0,:], power)
+                y = y[:,0,:]
         else:
             x = self.wavtoimg(x)
         x  = x[:,None,:,:-1]

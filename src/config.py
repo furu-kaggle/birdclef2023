@@ -21,15 +21,17 @@ class CFG:
     prilabelp = 1.0
     seclabelp = 0.5
     frame = 500
-    augpower_min = 1.5
-    augpower_max = 3.0
+    augpower_min = 1.9
+    augpower_max = 2.1
+    mixup_out_prob = 0.15
     mixup_in_prob = 1.0
-    backbone_dropout = 0.5
-    backbone_droppath = 0.5
-    head_dropout = 0.5
+    backbone_dropout = 0.2
+    backbone_droppath = 0.2
+    head_dropout = 0.2
 
     mixup_alpha_in = 2.0
     mixup_alpha_out = 2.0
+    sample_size = 300
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
     n_fft = 1024
 
@@ -45,7 +47,7 @@ class CFG:
     lr = 5e-3
 
     #スケジューラーの最小学習率
-    min_lr = 1e-4
+    min_lr = 1e-5
 
     #ウォームアップステップ
     warmupstep = 0
@@ -54,7 +56,7 @@ class CFG:
     epochs = 40
 
     #factor update
-    factors = list([15,14,13,12,11,10,9]) + list([max(1, 8 - i//3) for i in range(epochs)])
+    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
 
     #lr ratio (best fit 3)
     lr_ratio = 5
