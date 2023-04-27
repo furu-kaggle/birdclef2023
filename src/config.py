@@ -18,6 +18,19 @@ class CFG:
     fmax = 14000
     power = 2
     top_db = None
+    prilabelp = 1.0
+    seclabelp = 0.5
+    frame = 500
+    augpower_min = 1.9
+    augpower_max = 2.1
+    backbone_dropout = 0.2
+    backbone_droppath = 0.2
+    head_dropout = 0.2
+    mixup_alpha_in = 2.0
+    mixup_alpha_out = 2.0
+    mixup_in_prob = 1.0
+    mixup_out_prob = 0.15
+    sample_size = 300
 
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
     n_fft = 1024
@@ -43,7 +56,7 @@ class CFG:
     epochs = 35
 
     #factor update
-    factors = list([15,14,13,12,11,10,9,8,8,7,7,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
+    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -55,7 +68,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "pretrain_weight/pretrain_weightmodel_all_60.bin"
+    pretrainpath = "ppweight_nf1024_hop320_n128_f514/pretrain_weightmodel_all_last.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
@@ -71,7 +84,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=epochs, 
+            t_initial=epochs+5, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 

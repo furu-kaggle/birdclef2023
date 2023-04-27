@@ -46,7 +46,7 @@ train_aug = AA.Compose(
         ),
         AA.AddBackgroundNoise(
             sounds_path="data/esc50/useesc50",
-            min_snr_in_db=3,
+            min_snr_in_db=5,
             max_snr_in_db=10,
             p=0.5,
         ),

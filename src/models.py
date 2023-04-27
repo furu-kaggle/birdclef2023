@@ -71,11 +71,12 @@ class Mixup(object):
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=True,path=None,training=True):
         super(Model, self).__init__()
+        self.cfg = CFG
         self.model = timm.create_model(
             CFG.model_name,
             pretrained=pretrained, 
-            drop_rate=0.2, 
-            drop_path_rate=0.2, 
+            drop_rate=CFG.backbone_dropout, 
+            drop_path_rate=CFG.backbone_droppath, 
             in_chans=1,
             global_pool="",
             num_classes=0
@@ -85,7 +86,7 @@ class Model(nn.Module):
         
         in_features = self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=CFG.head_dropout)
         
         self.loss_fn = nn.BCEWithLogitsLoss()#(reduction='none')
         self.training = training
@@ -109,23 +110,7 @@ class Model(nn.Module):
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
         self.factor = 6
-        self.frame = 500
-        
-    def torch_mono_to_color(self, X, eps=1e-6, mean=None, std=None):
-        mean = mean or X.mean()
-        std = std or X.std()
-        X = (X - mean) / (std + eps)
-
-        _min, _max = X.min(), X.max()
-
-        if (_max - _min) > eps:
-            V = torch.clip(X, _min, _max)
-            V = 255 * (V - _min) / (_max - _min)
-            V = V.to(torch.uint8)
-        else:
-            V = torch.zeros_like(X, dtype=torch.uint8)
-
-        return V
+        self.frame = CFG.frame
     
     def wavtoimg(self, wav, power=2):
         self.mel.power = power
@@ -137,25 +122,30 @@ class Model(nn.Module):
     def forward(self, x, y=None, w=None):
         if self.training:
             # shape:(b, outm, inm, time)
-            # inner mixup (0)
-            power = random.uniform(1.5,3.0)
-            batch_size = x.shape[0]
-            lam1, lam2 = self.mixup_out.get_lambda(batch_size)
-            lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
-            x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
-            y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
+            power = random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
+            if (random.uniform(0,1) < self.cfg.mixup_out_prob):
+                batch_size = x.shape[0]
+                lam1, lam2 = self.mixup_out.get_lambda(batch_size)
+                lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+                x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
+                y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
+            else:
+                x = self.wavtoimg(x[:,0,:], power)
+                y = y[:,0,:]
         else:
             x = self.wavtoimg(x)
         x  = x[:,None,:,:-1]
         if  self.training:
-            x_mix = torch.zeros_like(x).to(x.device)
-            perms = torch.randperm(self.factor).to(x.device)
-            for i, perm in enumerate(perms):
-                x_mix[:,:,:,i*self.frame:(i+1)*self.frame] = x[:,:,:,perm*self.frame:(perm+1)*self.frame]
+            if (random.uniform(0,1) < self.cfg.mixup_in_prob):
+                batch_size = x.shape[0]
+                x_mix = torch.zeros_like(x).to(x.device)
+                perms = torch.randperm(self.factor).to(x.device)
+                for i, perm in enumerate(perms):
+                    x_mix[:,:,:,i*self.frame:(i+1)*self.frame] = x[:,:,:,perm*self.frame:(perm+1)*self.frame]
 
-            lam1, lam2 = self.mixup_in.get_lambda(batch_size)
-            lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
-            x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
+                lam1, lam2 = self.mixup_in.get_lambda(batch_size)
+                lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+                x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
 
             x  = x[:,:,:,:self.factor*self.frame]
             

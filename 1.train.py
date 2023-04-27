@@ -92,7 +92,7 @@ def run(foldtrain=False):
     for epoch in range(CFG.epochs):
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         downsample_train = pd.concat([
-                train[train['label_id'] == label].sample(min(400, count), random_state=epoch, replace=False)
+                train[train['label_id'] == label].sample(min(CFG.sample_size, count), random_state=epoch, replace=False)
                                 for label, count in train['label_id'].value_counts().items()             
         ]).reset_index(drop=True)
         model.factor = CFG.factors[epoch]
@@ -153,8 +153,9 @@ print(addtrain)
 
 df = pd.concat([df,addtrain]).reset_index(drop=True)
 
-df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
-df["smooth_weight"] = 1 - df["weight"]
+#df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
+#df["smooth_weight"] = 1 - df["weight"]
+df["weight"] = df["rating"] / df["rating"].max()
 
 #ユニークキー
 CFG.unique_key = unique_key
@@ -162,8 +163,22 @@ CFG.unique_key = unique_key
 #クラス数
 CFG.CLASS_NUM = len(unique_key)
 
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)  # type: ignore
+    torch.backends.cudnn.deterministic = True  # type: ignore
+    torch.backends.cudnn.benchmark = True  # type: ignore
+
+
+
 CFG.key = "eval"
 run(foldtrain=True)
 
-CFG.key = "all"
-run(foldtrain=False)
+#for rand in [35,300,445,8311,7655,8889]:
+for rand in [35]:
+    set_seed(rand)
+    CFG.key = f"all_{rand}"
+    run(foldtrain=False)
