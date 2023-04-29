@@ -88,6 +88,7 @@ def run(foldtrain=False):
         scheduler = scheduler,
         device=device,
     )
+    #train = train[train.sec_num < 5].reset_index(drop=True)
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
@@ -177,8 +178,8 @@ def set_seed(seed: int = 42):
 CFG.key = "eval"
 run(foldtrain=True)
 
-#for rand in [35,300,445,8311,7655,8889]:
-for rand in [35]:
+for rand in [35,300,445,8311,7655,8889]:
+#for rand in [35]:
     set_seed(rand)
     CFG.key = f"all_{rand}"
     run(foldtrain=False)
