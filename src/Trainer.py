@@ -37,9 +37,10 @@ from audiomentations import (
 import timm
 
 from .Record import Record
+import wandb
 
 class Trainer:
-    def __init__(self, model, optimizer, scheduler, device, CFG):
+    def __init__(self, model, optimizer, scheduler, device, CFG, wandb_flg):
         """
         Constructor for Trainer class
         """
@@ -49,6 +50,9 @@ class Trainer:
         self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
         self.device = device
         self.CFG = CFG
+        if wandb_flg:
+            wandb.init(project = "birdclef2023")
+            
     
     def train_one_cycle(self, train_loader, epoch):
         """
@@ -106,8 +110,19 @@ class Trainer:
                 pbar.set_description("[ploss %f sloss %f]" % (record.get_loss()[0],record.get_loss()[1]))
         
         score_list = record.get_valdf()
-        #cmAP = record.get_f1score()
-        #print(cmAP)
+        wandb.log(
+            {
+                "primary_loss": record.get_loss()[0], 
+                "secondary_loss": record.get_loss()[1],
+                "mean_score":score_list.mean(),
+                "25% quantile score":np.percentile(score_list, 25),
+                "50% quantile score":np.percentile(score_list, 50),
+                "75% quantile score":np.percentile(score_list, 75),
+                "max_score":score_list.max(),
+                "min score":score_list.min(),
+                "score variance":score_list.std(),
+            }
+        )
 
         print(f"epoch:{epoch} val result, ploss:{record.get_loss()[0]}, sloss:{record.get_loss()[1]}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
         print(f"mean score {score_list.mean()}, 25% score{np.percentile(score_list, 25)} 50% score{np.percentile(score_list, 50)}, 75% score{np.percentile(score_list, 75)}" , file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))

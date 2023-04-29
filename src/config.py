@@ -13,7 +13,7 @@ class CFG:
     #image parameter
     sr = 32000
     period = 30
-    n_mel = 128
+    n_mel = 64
     fmin = 50
     fmax = 14000
     power = 2
@@ -38,10 +38,10 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 15
+    batch_size = 10
 
     #前処理CPUコア数
-    workers = 15
+    workers = 14
 
     #学習率 (best range 5e-9~2e-4)
     lr = 5e-3
@@ -53,7 +53,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 40
+    epochs = 35
 
     #factor update
     factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
