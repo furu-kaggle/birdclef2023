@@ -41,7 +41,7 @@ class CFG:
     batch_size = 10
 
     #前処理CPUコア数
-    workers = 14
+    workers = 30
 
     #学習率 (best range 5e-9~2e-4)
     lr = 5e-3
@@ -64,6 +64,8 @@ class CFG:
     #label smoothing rate
     smooth = 0.005
 
+    k_decay = 1.0
+
     #model name
     model_name = 'eca_nfnet_l0'
 
@@ -79,7 +81,7 @@ class CFG:
             {"params": model.fc.parameters(),    "lr": learning_rate},
         ],weight_decay=decay)
 
-    def get_scheduler(optimizer, min_lr, epochs, warmupstep=0,warmup_lr_init=1e-5):
+    def get_scheduler(optimizer, min_lr, epochs, warmupstep=0,warmup_lr_init=1e-5,k_decay=1.0):
         # base lr は optimizerを継承
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
@@ -88,5 +90,6 @@ class CFG:
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
-            warmup_prefix=True
+            warmup_prefix=True,
+            k_decay = k_decay
         )

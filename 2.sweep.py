@@ -1,4 +1,4 @@
-import os,sys,re,glob,random
+import os,sys,re,glob,random, json
 
 # For descriptive error messages
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -40,13 +40,43 @@ import timm
 
 from src import Trainer, Model, WaveformDataset, CFG, EvalWaveformDataset
 
+import wandb
 
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)  # type: ignore
+    torch.backends.cudnn.deterministic = True  # type: ignore
+    torch.backends.cudnn.benchmark = True  # type: ignore
+
+set_seed(35)
 
 device = torch.device("cuda")
 def run():
+    wandb.init(project="birdclef2023")
+    for key, value in wandb.config.items():
+        setattr(CFG, key, value)
+
     model = Model(CFG, path = CFG.pretrainpath).to(device)
 
-    train = df
+    train = df[~df["eval"].astype(bool)].reset_index(drop=True)
+    test =  df[df["eval"].astype(bool)].reset_index(drop=True)
+
+    valid_set = EvalWaveformDataset(
+        CFG = CFG,
+        df=test,
+        period = 5
+    )
+    valid_loader = DataLoader(
+        valid_set,
+        batch_size=CFG.batch_size,
+        pin_memory=True,
+        shuffle = False,
+        drop_last=True,
+        num_workers=CFG.workers,
+    )
         
     optimizer = CFG.get_optimizer(
         model, 
@@ -66,7 +96,8 @@ def run():
         model=model,
         optimizer=optimizer,
         scheduler = scheduler,
-        device=device
+        device=device,
+        wandb = wandb
     )
     primary_label_counts_map = train["label_id"].value_counts().to_dict()
     secondary_label_counts_map = train["labels_id"].explode().value_counts().to_dict()
@@ -75,6 +106,7 @@ def run():
     train["label_count"] = train["primary_count"] + train["secondary_count"]
     train["sample_weight"] = train["label_count"]**(1/4)/train["label_count"]
 
+    #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         train_sampler = torch.utils.data.WeightedRandomSampler(
             list(train["sample_weight"].values),
@@ -90,27 +122,19 @@ def run():
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
+        batch_factor = 1#min(2, int(15/CFG.factors[epoch]))
         train_loader = DataLoader(
             train_set,
-            batch_size=CFG.batch_size,
+            batch_size=CFG.batch_size*batch_factor,
             drop_last=True,
             pin_memory=True,
             shuffle = False,
-            num_workers=CFG.workers,
+            num_workers=CFG.workers*batch_factor,
             sampler = train_sampler
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
-        #last save model
-        savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
-        torch.save(trainer.model.state_dict(),savename)
-        if (epoch > 25):
-            try:
-                savename = CFG.weight_dir + f"model_{epoch}.bin"
-                torch.save(trainer.model.state_dict(),savename)
-            except:
-                pass
-                    
+        trainer.valid_one_cycle(valid_loader,epoch)
 
 df = pd.read_csv("data/train.csv")
 df["labels_id"] = df.labels_id.apply(eval)
@@ -163,23 +187,10 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-def set_seed(seed: int = 42):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)  # type: ignore
-    torch.backends.cudnn.deterministic = True  # type: ignore
-    torch.backends.cudnn.benchmark = True  # type: ignore
+with open(f'sweep_config.json') as f:
+    opt_params = json.load(f)
 
-set_seed(35)
-CFG.key = "all_35"
-run(foldtrain=False)
 
-set_seed(355)
-CFG.key = "all_355"
-run(foldtrain=False)
-
-set_seed(311)
-CFG.key = "all_311"
-run(foldtrain=False)
+CFG.key = "eval"
+sweep_id = wandb.sweep(opt_params)
+wandb.agent(sweep_id, run)
