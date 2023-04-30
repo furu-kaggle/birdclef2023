@@ -174,12 +174,12 @@ def set_seed(seed: int = 42):
 
 set_seed(35)
 CFG.key = "all_35"
-run(foldtrain=False)
+run()
 
 set_seed(355)
 CFG.key = "all_355"
-run(foldtrain=False)
+run()
 
 set_seed(311)
 CFG.key = "all_311"
-run(foldtrain=False)
+run()

@@ -1,10 +1,10 @@
 {
     "project":"birdclef2023",
-    "name": "opt_nmel64_ecanfnet_100fpers",
+    "name": "opt_nmel128_ecanfnet_100fpers",
     "method": "bayes",
     "metric": {
         "name": "mean_score",
-        "goal": "minimize"
+        "goal": "maximize"
     },
     "early_terminate":{
         "type": "hyperband",
@@ -14,7 +14,7 @@
         "sec_labelp":{
             "distribution": "uniform",
             "min": 0.4,
-            "max": 0.6
+            "max": 0.7
         },
         "mixup_out_prob":{
             "distribution": "uniform",
@@ -27,7 +27,7 @@
             "max": 0.5
         },
         "batch_size":{
-            "values":[8,10,12,14,15]
+            "values":[8,10,12]
         },
         "lr":{
             "distribution": "uniform",
@@ -52,7 +52,7 @@
         "k_decay":{
             "distribution": "uniform",
             "min": 1.0,
-            "max": 3.0
+            "max": 2.5
         }
     }
 }

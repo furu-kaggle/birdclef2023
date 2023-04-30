@@ -40,7 +40,7 @@ from .Record import Record
 import wandb
 
 class Trainer:
-    def __init__(self, model, optimizer, scheduler, device, CFG, wandb_flg):
+    def __init__(self, model, optimizer, scheduler, device, CFG, wandb=None):
         """
         Constructor for Trainer class
         """
@@ -50,8 +50,8 @@ class Trainer:
         self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
         self.device = device
         self.CFG = CFG
-        if wandb_flg:
-            wandb.init(project = "birdclef2023")
+        if wandb is not None:
+            self.wandb = wandb
             
     
     def train_one_cycle(self, train_loader, epoch):
