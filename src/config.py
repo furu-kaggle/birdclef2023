@@ -13,7 +13,7 @@ class CFG:
     #image parameter
     sr = 32000
     period = 30
-    n_mel = 64
+    n_mel = 128
     fmin = 50
     fmax = 14000
     power = 2

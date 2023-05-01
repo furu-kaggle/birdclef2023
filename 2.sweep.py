@@ -55,9 +55,9 @@ set_seed(35)
 
 device = torch.device("cuda")
 def run():
-    wandb.init(project="birdclef2023")
-    for key, value in wandb.config.items():
-        setattr(CFG, key, value)
+    #wandb.init(project="birdclef2023")
+    #for key, value in wandb.config.items():
+    #    setattr(CFG, key, value)
 
     model = Model(CFG, path = CFG.pretrainpath).to(device)
 
@@ -97,7 +97,7 @@ def run():
         optimizer=optimizer,
         scheduler = scheduler,
         device=device,
-        wandb = wandb
+        wandb_flg = True
     )
     primary_label_counts_map = train["label_id"].value_counts().to_dict()
     secondary_label_counts_map = train["labels_id"].explode().value_counts().to_dict()
@@ -187,10 +187,11 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-with open(f'sweep_config.json') as f:
-    opt_params = json.load(f)
+# with open(f'sweep_config.json') as f:
+#     opt_params = json.load(f)
 
 
 CFG.key = "eval"
-sweep_id = wandb.sweep(opt_params)
-wandb.agent(sweep_id, run)
+run()
+#sweep_id = wandb.sweep(opt_params)
+#wandb.agent(sweep_id, run)

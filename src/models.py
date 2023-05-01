@@ -90,7 +90,7 @@ class Model(nn.Module):
         if path is not None:
           self.model.load_state_dict(torch.load(path))
         
-        in_features = self.model.num_features
+        in_features = 5376#self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
         init_layer(self.fc)
         self.dropout = nn.Dropout(p=CFG.head_dropout)
@@ -116,7 +116,7 @@ class Model(nn.Module):
             mel_scale = 'htk')
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
-        self.gem = GeM()
+        #self.gem = GeM()
     
     def wavtoimg(self, wav, power=2):
         self.mel.power = power
@@ -124,6 +124,27 @@ class Model(nn.Module):
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
         return img
+
+    def gem_pooling(self, x, p=3, eps=1e-6):
+        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+
+    def get_features(self,x):
+        x = self.model.stem(x)
+        x1 = self.model.stages[0](x)
+        x2 = self.model.stages[1](x1)
+        x3 = self.model.stages[2](x2)
+        x4 = self.model.stages[3](x3)
+        xf = self.model.final_conv(x4)
+        out = self.model.final_act(xf)
+        return [x3, x4, out]
+
+    def transform_features(self, x):
+        b, c, f, t = x.shape
+        x = x.permute(0, 3, 2, 1)
+        x = x.reshape(b//self.factor, t*self.factor, f, c)
+        x = x.permute(0, 3, 2, 1)
+        return x
+
 
     def forward(self, x, y=None, w=None):
         if self.training:
@@ -159,15 +180,16 @@ class Model(nn.Module):
             x = x.reshape(b*self.factor, t//self.factor, f, c)
             x = x.permute(0, 3, 2, 1)
             #print(x.shape)
-            x = self.model(x)
-            b, c, f, t = x.shape
-            x = x.permute(0, 3, 2, 1)
-            x = x.reshape(b//self.factor, t*self.factor, f, c)
-            x = x.permute(0, 3, 2, 1)
+            #x = self.model(x)
+            xx = self.get_features(x)
+            xx = [self.gem_pooling(
+                self.transform_features(x), p = 5 - idx*2
+            )[:,:,0,0] for idx, x in enumerate(xx)]
         else:
-            x = self.model(x)
+            xx = self.get_features(x)
+            xx = [self.gem_pooling(x, p = 5 - idx*2)[:,:,0,0] for idx, x in enumerate(xx)]
 
-        x = self.gem(x)[:,:,0,0]
+        x = torch.cat(xx,axis=1)
         x = self.dropout(x)
         x = self.fc(x)
         if (y is not None):
