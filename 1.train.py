@@ -48,9 +48,6 @@ def run(foldtrain=False):
         train = df[~df["eval"].astype(bool)].reset_index(drop=True)
         test =  df[df["eval"].astype(bool)].reset_index(drop=True)
 
-        #0sのみ利用
-        #test = test[test.start_sec==0].reset_index(drop=True)
-
         valid_set = EvalWaveformDataset(
             CFG = CFG,
             df=test,
@@ -87,29 +84,42 @@ def run(foldtrain=False):
         scheduler = scheduler,
         device=device
     )
+    primary_label_counts_map = train["label_id"].value_counts().to_dict()
+    secondary_label_counts_map = train["labels_id"].explode().value_counts().to_dict()
+    train["primary_count"] = train["label_id"].map(primary_label_counts_map)
+    train["secondary_count"] = train["label_id"].map(secondary_label_counts_map).fillna(0)
+    train["label_count"] = train["primary_count"] + train["secondary_count"]
+    train["sample_weight"] = train["label_count"]**(1/4)/train["label_count"]
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
-        downsample_train = pd.concat([
-                train[train['label_id'] == label].sample(min(CFG.sample_size, count), random_state=epoch, replace=False)
-                                for label, count in train['label_id'].value_counts().items()             
-        ]).reset_index(drop=True)
+        # downsample_train = pd.concat([
+        #         train[train['label_id'] == label].sample(min(CFG.sample_size, count), random_state=epoch, replace=False)
+        #                         for label, count in train['label_id'].value_counts().items()             
+        # ]).reset_index(drop=True)
+        print("set sampler")
+        train_sampler = torch.utils.data.WeightedRandomSampler(
+            list(train["sample_weight"].values),
+            len(train),
+            replacement=True
+        )
         model.factor = CFG.factors[epoch]
         train_set = WaveformDataset(
              CFG = CFG,
-             df=downsample_train,
+             df=train,
              prilabelp = CFG.prilabelp,
              seclabelp = CFG.seclabelp,
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
-        batch_factor = min(2, int(15/CFG.factors[epoch]))
+        batch_factor = min(2, int(max(CFG.factors)/CFG.factors[epoch]))
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
             drop_last=True,
             pin_memory=True,
-            shuffle = True,
+            #shuffle = True,
             num_workers=CFG.workers*batch_factor,
+            sampler = train_sampler
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
@@ -167,8 +177,8 @@ df["weight"] = df["rating"] / df["rating"].max()
 
 #df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
 
-loopaugdf = pd.read_csv("data/loopaugdf.csv")
-df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)
+# loopaugdf = pd.read_csv("data/loopaugdf.csv")
+# df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)
 
 #ユニークキー
 CFG.unique_key = unique_key
@@ -178,8 +188,8 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-# CFG.key = "eval"
-# run(foldtrain=True)
+CFG.key = "eval"
+run(foldtrain=True)
 
 def set_seed(seed: int = 42):
     random.seed(seed)
