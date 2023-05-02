@@ -82,8 +82,8 @@ class WaveformDataset(Dataset):
         self.period = period
         self.df["sort_index"] = self.df.index
         self.smooth = smooth
-        self.prilabelp = prilabelp - self.smooth
-        self.seclabelp = seclabelp - self.smooth
+        self.prilabelp = prilabelp
+        self.seclabelp = seclabelp
         self.train = train
 
         
@@ -127,15 +127,6 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
-        # if (self.train)&(row.sec > 10):
-        #     if row["10sloopflg"]:
-        #         shift_level = 10
-        #     elif row["5sloopflg"]:
-        #         shift_level = 5
-        #     else:
-        #         shift_level = 0
-        # else:
-        #     shift_level = 0
 
         if (self.train)&(self.period >= 30):
             duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
@@ -149,17 +140,9 @@ class WaveformDataset(Dataset):
         #データ読み込み
         data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
 
-        # if (self.train)&(offset < 5)&(shift_level >= 5):
-        #     stride = int(sr*(shift_level-offset))
-        #     data = np.roll(data, -stride)
-
         #augemnt1
         if (self.train)&(random.uniform(0,1) < row.weight):
              data = self.aug(samples=data, sample_rate=sr)
-
-        # if (self.train):
-        #     if (random.uniform(0,1) < row.sampleweight):
-        #         data = self.aug(samples=data, sample_rate=sr)
 
         #test datasetの最大長
         max_sec = len(data)//sr
@@ -170,10 +153,11 @@ class WaveformDataset(Dataset):
         data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
-        if row.label_id != -1:
-            labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
             labels[row.labels_id] = self.seclabelp
+        if row.label_id != -1:
+            labels[row.label_id] = self.prilabelp
+        
 
         return data, labels
     

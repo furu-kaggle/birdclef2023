@@ -25,9 +25,9 @@ class CFG:
     augpower_max = 2.1
     mixup_out_prob = 0.15
     mixup_in_prob = 1.0
-    backbone_dropout = 0.3
-    backbone_droppath = 0.3
-    head_dropout = 0.3
+    backbone_dropout = 0
+    backbone_droppath = 0
+    head_dropout = 0
 
     mixup_alpha_in = 2.0
     mixup_alpha_out = 2.0
@@ -56,7 +56,7 @@ class CFG:
     epochs = 40
 
     #factor update
-    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
+    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -84,7 +84,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=epochs+5, 
+            t_initial=40, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 

@@ -27,30 +27,30 @@ import sklearn.metrics
 
 import timm
 
-class GeM(nn.Module):
-    def __init__(self, p=3, eps=1e-6):
-        super(GeM, self).__init__()
-        self.p = Parameter(torch.ones(1) * p)
-        self.eps = eps
+# class GeM(nn.Module):
+#     def __init__(self, p=3, eps=1e-6):
+#         super(GeM, self).__init__()
+#         self.p = Parameter(torch.ones(1) * p)
+#         self.eps = eps
 
-    def gem_pooling(self, x, p=3, eps=1e-6):
-        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
+#     def gem_pooling(self, x, p=3, eps=1e-6):
+#         return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
 
-    def forward(self, x):
-        ret = self.gem_pooling(x, p=self.p, eps=self.eps)
-        return ret
+#     def forward(self, x):
+#         ret = self.gem_pooling(x, p=self.p, eps=self.eps)
+#         return ret
 
-    def __repr__(self):
-        return (
-            self.__class__.__name__
-            + "("
-            + "p="
-            + "{:.4f}".format(self.p.data.tolist()[0])
-            + ", "
-            + "eps="
-            + str(self.eps)
-            + ")"
-        )
+#     def __repr__(self):
+#         return (
+#             self.__class__.__name__
+#             + "("
+#             + "p="
+#             + "{:.4f}".format(self.p.data.tolist()[0])
+#             + ", "
+#             + "eps="
+#             + str(self.eps)
+#             + ")"
+#         )
 
 
 def init_layer(layer):
@@ -116,7 +116,6 @@ class Model(nn.Module):
             mel_scale = 'htk')
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
-        self.gem = GeM()
     
     def wavtoimg(self, wav, power=2):
         self.mel.power = power
@@ -124,6 +123,9 @@ class Model(nn.Module):
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
         return img
+
+    def gem_pooling(self, x, p=3, eps=1e-6):
+        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
 
     def forward(self, x, y=None, w=None):
         if self.training:
@@ -167,7 +169,7 @@ class Model(nn.Module):
         else:
             x = self.model(x)
 
-        x = self.gem(x)[:,:,0,0]
+        x = self.gem_pooling(x)[:,:,0,0]
         x = self.dropout(x)
         x = self.fc(x)
         if (y is not None):
