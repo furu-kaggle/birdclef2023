@@ -89,19 +89,15 @@ def run(foldtrain=False):
     train["primary_count"] = train["label_id"].map(primary_label_counts_map)
     train["secondary_count"] = train["label_id"].map(secondary_label_counts_map).fillna(0)
     train["label_count"] = train["primary_count"] + train["secondary_count"]
-    train["sample_weight"] = train["label_count"]**(1/4)/train["label_count"]
+    train["sample_weight"] = train["label_count"]**(1/3)/train["label_count"]
+    print("set sampler")
+    train_sampler = torch.utils.data.WeightedRandomSampler(
+        list(train["sample_weight"].values),
+        len(train),
+        replacement=True
+    )
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
-        # downsample_train = pd.concat([
-        #         train[train['label_id'] == label].sample(min(CFG.sample_size, count), random_state=epoch, replace=False)
-        #                         for label, count in train['label_id'].value_counts().items()             
-        # ]).reset_index(drop=True)
-        print("set sampler")
-        train_sampler = torch.utils.data.WeightedRandomSampler(
-            list(train["sample_weight"].values),
-            len(train),
-            replacement=True
-        )
         model.factor = CFG.factors[epoch]
         train_set = WaveformDataset(
              CFG = CFG,
@@ -175,11 +171,6 @@ print(df)
 
 df["weight"] = df["rating"] / df["rating"].max()
 
-#df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
-
-# loopaugdf = pd.read_csv("data/loopaugdf.csv")
-# df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)
-
 #ユニークキー
 CFG.unique_key = unique_key
 
@@ -188,8 +179,8 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 def set_seed(seed: int = 42):
     random.seed(seed)

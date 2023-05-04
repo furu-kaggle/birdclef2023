@@ -82,8 +82,8 @@ class WaveformDataset(Dataset):
         self.period = period
         self.df["sort_index"] = self.df.index
         self.smooth = smooth
-        self.prilabelp = prilabelp
-        self.seclabelp = seclabelp
+        self.prilabelp = prilabelp - smooth
+        self.seclabelp = seclabelp - smooth
         self.train = train
 
         
@@ -151,6 +151,29 @@ class WaveformDataset(Dataset):
         max_sec = 1 if max_sec==0 else max_sec
         
         data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
+
+        if self.train:
+            #add train data
+            if row.sec_num==0:
+                pair_idx = np.random.choice(self.id2record[row.label_id])
+                row_pair = self.df.iloc[pair_idx]
+                data_pair, sr = librosa.load(row.audio_paths, sr=self.sr, offset=0, duration=self.period, mono=True)
+                #augemnt2
+                if (random.uniform(0,1) < row.weight):
+                    data_pair = self.aug(samples=data_pair, sample_rate=sr)
+
+            else:
+                data_pair = data
+
+            #test datasetの最大長
+            max_sec = len(data_pair)//sr
+
+            #0秒の場合は１秒として取り扱う
+            max_sec = 1 if max_sec==0 else max_sec
+        
+            data_pair = self.crop_or_pad(data_pair, length=sr*self.period,is_train=False)
+
+            data = np.stack([data, data_pair])
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
         if row.sec_num != 0:

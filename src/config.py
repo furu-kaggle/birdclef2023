@@ -24,10 +24,11 @@ class CFG:
     augpower_min = 1.9
     augpower_max = 2.1
     mixup_out_prob = 0.15
-    mixup_in_prob = 1.0
-    backbone_dropout = 0
-    backbone_droppath = 0
-    head_dropout = 0
+    mixup_in_prob1 = 1.0
+    mixup_in_prob2 = 1.0
+    backbone_dropout = 0.2
+    backbone_droppath = 0.2
+    head_dropout = 0.2
 
     mixup_alpha_in = 2.0
     mixup_alpha_out = 2.0
@@ -88,5 +89,6 @@ class CFG:
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
-            warmup_prefix=True
+            warmup_prefix=True,
+            k_decay = 1.5
         )
