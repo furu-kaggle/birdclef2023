@@ -117,12 +117,15 @@ class Model(nn.Module):
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
         self.gem = GeM()
+        self.freq_mask = ta.transforms.FrequencyMasking(12, iid_masks=True)
     
     def wavtoimg(self, wav, power=2):
         self.mel.power = power
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
+        if (self.training)&(random.uniform(0,1) < 0.25):
+            img = self.freq_mask(img)
         return img
 
     def forward(self, x, y=None, w=None):
@@ -152,6 +155,8 @@ class Model(nn.Module):
                 x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
 
             #x  = x[:,:,:,:self.factor*self.frame]
+            if (self.training)&(random.uniform(0,1) < 0.25):
+                x = self.freq_mask(x)
 
             #print(x.shape)
             b, c, f, t = x.shape
