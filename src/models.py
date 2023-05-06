@@ -143,7 +143,7 @@ class Model(nn.Module):
         else:
             x = self.wavtoimg(x)
         x  = x[:,None,:,:-1]
-        if  self.training:
+        if  (self.training)&(self.factor > 3):
             if (random.uniform(0,1) < self.cfg.mixup_in_prob):
                 x_mix = torch.zeros_like(x).to(x.device)
                 perms = torch.randperm(self.factor).to(x.device)

@@ -102,14 +102,14 @@ def run(foldtrain=False):
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
-        batch_factor = min(2, int(15/CFG.factors[epoch]))
+        batch_factor = CFG.batch_factor[CFG.factors[epoch]]
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
             drop_last=True,
             pin_memory=True,
             shuffle = True,
-            num_workers=CFG.workers*batch_factor,
+            num_workers=CFG.workers,
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
