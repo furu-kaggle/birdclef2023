@@ -168,7 +168,7 @@ class Model(nn.Module):
             x = self.model(x)
 
         x = self.gem(x)[:,:,0,0]
-        x = self.dropout(x)
+        #x = self.dropout(x)
         x = self.fc(x)
         if (y is not None):
             loss = self.loss_fn(x, y)
