@@ -63,7 +63,7 @@ class Model(nn.Module):
             num_classes=0,
         )
         if path is not None:
-          self.model.load_state_dict(torch.load(path))
+          self.model.load_state_dict(torch.load(path))#["backbone_state_dict"])
         
         in_features = self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)

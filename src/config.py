@@ -74,7 +74,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_all_last.bin"
+    pretrainpath = "data/pretrain_weightmodel_0.881_eval.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
