@@ -50,15 +50,15 @@ train_aug = AA.Compose(
             max_snr_in_db=10,
             p=0.75,
         ),
-        AA.AddGaussianSNR(
-            min_snr_in_db=5,max_snr_in_db=10.0,p=0.25
-        ),
-        AA.Shift(
-            min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
-        ),
-        AA.LowPassFilter(
-            min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
-        )
+        # AA.AddGaussianSNR(
+        #     min_snr_in_db=5,max_snr_in_db=10.0,p=0.25
+        # ),
+        # AA.Shift(
+        #     min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
+        # ),
+        # AA.LowPassFilter(
+        #     min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
+        # )
     ]
 )
 
@@ -128,15 +128,15 @@ class WaveformDataset(Dataset):
 
     def load_audio(self,row):
 
-        if (self.train)&(self.period >= 30):
-            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
-            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
-            if (self.train)&(duration_seconds > max(35, self.period + 5)):
-                offset = random.uniform(0, duration_seconds - self.period)
-            else:
-                offset = 0
-        else:
-            offset = 0
+        # if (self.train)&(self.period >= 30):
+        #     duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
+        #     #訓練時にはランダムにスタートラインを変える(time shift augmentations)
+        #     if (self.train)&(duration_seconds > max(35, self.period + 5)):
+        #         offset = random.uniform(0, duration_seconds - self.period)
+        #     else:
+        #         offset = 0
+        # else:
+        offset = 0
         #データ読み込み
         data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
 
@@ -159,7 +159,7 @@ class WaveformDataset(Dataset):
                 row_pair = self.df.iloc[pair_idx]
                 data_pair, sr = librosa.load(row.audio_paths, sr=self.sr, offset=0, duration=self.period, mono=True)
                 #augemnt2
-                if (random.uniform(0,1) < row.weight):
+                if (random.uniform(0,1) < 0.5):
                     data_pair = self.aug(samples=data_pair, sample_rate=sr)
 
             else:

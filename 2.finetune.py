@@ -38,15 +38,17 @@ from audiomentations import (
 )
 import timm
 
-from finetune_src import Trainer, Model, WaveformDataset, CFG, EvalWaveformDataset
+from finetune_src import Trainer, Model, WaveformDataset, EvalWaveformDataset
+from finetune_src import CFG64 as CFG
 
 device = torch.device("cuda")
 def run(foldtrain=False):
     model = Model(CFG)
-    model.load_state_dict(torch.load(CFG.pretrainpath),strict=False)
-    model.to(device)
+    
     
     if foldtrain:
+        model.load_state_dict(torch.load(CFG.eval_pretrainpath),strict=False)
+        model.to(device)
         train = df[~df["eval"].astype(bool)].reset_index(drop=True)
         test =  df[df["eval"].astype(bool)].reset_index(drop=True)
 
@@ -65,6 +67,8 @@ def run(foldtrain=False):
         )
 
     else:
+        model.load_state_dict(torch.load(CFG.all_pretrainpath),strict=False)
+        model.to(device)
         train = df
         
     optimizer = CFG.get_optimizer(
@@ -98,7 +102,8 @@ def run(foldtrain=False):
         len(train),
         replacement=True
     )
-    #trainer.valid_one_cycle(valid_loader, 0)
+    if foldtrain:
+        trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         model.factor = CFG.factors[epoch]
         train_set = WaveformDataset(
@@ -179,8 +184,8 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 def set_seed(seed: int = 42):
     random.seed(seed)
