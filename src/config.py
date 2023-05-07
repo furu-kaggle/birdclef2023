@@ -42,7 +42,7 @@ class CFG:
     batch_size = 15
 
     #前処理CPUコア数
-    workers = 15
+    workers = 30
 
     #学習率 (best range 5e-9~2e-4)
     lr = 5e-3
@@ -54,10 +54,15 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 40
+    epochs = 35
 
     #factor update
     factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
+
+    batch_factor = {
+        15:1,14:1,13:1,12:1,11:1,10:1,9:1,8:1,
+        7:2,6:2,5:3,4:3,3:5,2:5,1:6
+    }
 
     #lr ratio (best fit 3)
     lr_ratio = 5
