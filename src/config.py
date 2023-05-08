@@ -13,9 +13,9 @@ class CFG:
     #image parameter
     sr = 32000
     period = 30
-    n_mel = 128
-    fmin = 50
-    fmax = 14000
+    n_mel = 224
+    fmin = 10
+    fmax = 16000
     power = 2
     top_db = None
     prilabelp = 1.0
@@ -34,12 +34,12 @@ class CFG:
     mixup_alpha_out = 2.0
     sample_size = 300
     # time_len = sr[1/s] * time[s] /hop_len = sr[1/s] * time[s] 4/n_fft 
-    n_fft = 1024
+    n_fft = 2048
 
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 15
+    batch_size = 30
 
     #前処理CPUコア数
     workers = 30
@@ -54,14 +54,15 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 35
+    epochs = 15
 
     #factor update
-    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
+    factors = list([3])*epochs
+    #list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
 
     batch_factor = {
         15:1,14:1,13:1,12:1,11:1,10:1,9:1,8:1,
-        7:2,6:2,5:3,4:3,3:5,2:5,1:6
+        7:2,6:2,5:3,4:3,3:1,2:5,1:6
     }
 
     #lr ratio (best fit 3)
@@ -71,10 +72,10 @@ class CFG:
     smooth = 0.005
 
     #model name
-    model_name = 'eca_nfnet_l0'
+    model_name = 'efficientnet_b0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_0.881_eval.bin"
+    pretrainpath = "data/gemversion5nmel224.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"

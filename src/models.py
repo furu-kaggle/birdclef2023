@@ -58,8 +58,7 @@ class Model(nn.Module):
             pretrained=pretrained, 
             drop_rate=CFG.backbone_dropout, 
             drop_path_rate=CFG.backbone_droppath, 
-            in_chans=1, 
-            global_pool="",
+            in_chans=3,
             num_classes=0,
         )
         if path is not None:
@@ -134,22 +133,8 @@ class Model(nn.Module):
         else:
             x = self.wavtoimg(x)
         x  = x[:,None,:,:-1]
-        if  self.training:
-            #print(x.shape)
-            b, c, f, t = x.shape
-            x = x.permute(0, 3, 2, 1)
-            x = x.reshape(b*self.factor, t//self.factor, f, c)
-            x = x.permute(0, 3, 2, 1)
-            #print(x.shape)
-            x = self.model(x)
-            b, c, f, t = x.shape
-            x = x.permute(0, 3, 2, 1)
-            x = x.reshape(b//self.factor, t*self.factor, f, c)
-            x = x.permute(0, 3, 2, 1)
-        else:
-            x = self.model(x)
-
-        x = self.gem_pooling(x)[:,:,0,0]
+        x = torch.cat([x,x,x],axis=1)
+        x = self.model(x)
         x = self.dropout(x)
         x = self.fc(x)
         if (y is not None):

@@ -53,9 +53,6 @@ train_aug = AA.Compose(
         AA.AddGaussianSNR(
             min_snr_in_db=5,max_snr_in_db=10.0,p=0.25
         ),
-        AA.Shift(
-            min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
-        ),
         AA.LowPassFilter(
             min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
         )
