@@ -72,7 +72,8 @@ class WaveformDataset(Dataset):
                  seclabelp=0.5,
                  mixup_prob = 0.15,
                  smooth=0.005,
-                 train = True
+                 train = True,
+                 mask = None
                  ):
       
         self.df = df.reset_index(drop=True)
@@ -85,6 +86,13 @@ class WaveformDataset(Dataset):
         self.prilabelp = prilabelp - self.smooth
         self.seclabelp = seclabelp - self.smooth
         self.train = train
+        if mask is not None:
+            print("set mask")
+            self.mask = mask
+        else:
+            self.mask = None
+
+        self.period_idx = int(self.period*100)
 
         
         #Matrix Factorization (サブラベル同士は相関なしとして扱う)
@@ -126,16 +134,7 @@ class WaveformDataset(Dataset):
     def __len__(self):
         return len(self.df)
 
-    def load_audio(self,row):
-        if (self.train)&(self.period >= 30):
-            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
-            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
-            if (self.train)&(duration_seconds > max(35, self.period + 5)):
-                offset = random.uniform(0, duration_seconds - self.period)
-            else:
-                offset = 0
-        else:
-            offset = 0
+    def get_audio(self, row, offset = 0):
         #データ読み込み
         data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
         #augemnt1
@@ -148,7 +147,49 @@ class WaveformDataset(Dataset):
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
         
-        data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
+        data = self.crop_or_pad(data , length=sr*self.period,is_train=False)
+        """
+        (1)マスクに対して対象のIDがあるかどうか判定
+        No→処理終了し、画像サイズ(メル数、時間軸の長さ)となる全て１のマスクを生成する
+        YES→(2)へ進む
+        (2)tmp変数にマスクを取得するが、この場合、スペクトル画像全て(t,f)が入っており、入力画像サイズが時間軸方向で異なる場合がある。以下の場合分けが必要
+        (i)時間軸方向が入力画像サイズの時間軸方向よりも小さい場合
+        時間軸方向のパディングのみ適用し、余った余白は0を埋める
+        (ii)時間軸方向が入力画像サイズの時間軸方向よりも大きい場合
+        offsetからoffset + period_idxまで埋めるが、offset + period_idxが時間軸方向よりも長くなる場合は時間軸方向目一杯まで埋めた上で残りの余白を0埋めする
+        """
+
+        if self.mask is not None:
+            if row.filename_id in self.mask:
+                offset_idx = int(offset*100)
+                tmp = self.mask[row.filename_id][:,offset_idx:]
+                f, t = tmp.shape
+                mask = np.zeros((f, self.period_idx))
+                max_idx = min(t, self.period_idx)
+                mask[:,:max_idx] = tmp[:, :max_idx]
+            else:
+                mask = np.ones((self.CFG.n_mel, self.period_idx))
+        else:
+            mask = None
+        return data, mask
+
+    def load_audio(self,row):
+        data, mask = self.get_audio(row)
+        if self.train:
+            #add train data
+            if row.sec_num==0:
+                pair_idx = np.random.choice(self.id2record[row.label_id])
+                row_pair = self.df.iloc[pair_idx]
+                data_pair, mask_pair = self.get_audio(row_pair)
+            else:
+                duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
+                if duration_seconds > self.period:
+                    data_pair, mask_pair = self.get_audio(row, offset=random.uniform(0, duration_seconds - self.period))
+                else:
+                    data_pair, mask_pair = data, mask
+
+            data = np.stack([data, data_pair])
+            mask = np.stack([mask, mask_pair])
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
         if row.sec_num != 0:
@@ -156,26 +197,32 @@ class WaveformDataset(Dataset):
         if row.label_id != -1:
             labels[row.label_id] = self.prilabelp
 
-        return data, labels
+        return data, labels, mask
+        
     
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        audio1, label1 = self.load_audio(row)
+        audio1, label1, mask1 = self.load_audio(row)
         if self.train:
             if row.label_id in list(self.mixup_idlist.keys()):
                 #FMからペアとなるラベルIDを取得
                 pair_label_id = np.random.choice(self.mixup_idlist[row.label_id])
                 pair_idx = np.random.choice(self.id2record[pair_label_id])
                 row2 = self.df.iloc[pair_idx]
-                audio2, label2 = self.load_audio(row)
+                audio2, label2, mask2 = self.load_audio(row)
                 audio = np.stack([audio1,audio2])
                 label = np.stack([label1,label2])
+                mask = np.stack([mask1, mask2])
             else:
                 audio = np.stack([audio1,audio1])
                 label = np.stack([label1,label1])
+                mask = np.stack([mask1, mask1])
         else:
             audio = audio1
             label = label1
         weight = torch.tensor(row.weight, dtype=torch.float32)
         audio = torch.tensor(audio, dtype=torch.float32)
-        return audio, label, weight
+        if self.train:
+            return audio, label, weight, mask
+        else:
+            return audio, label, weight

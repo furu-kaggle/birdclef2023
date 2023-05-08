@@ -123,37 +123,43 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
-        return img
+        return img[:,:,:-1]
 
-    def forward(self, x, y=None, w=None):
+    def inner_mixup(self, x, x_mix, batch_size):        
+        perms = torch.randperm(self.factor).to(x.device)
+        for i, perm in enumerate(perms):
+            x_mix[:,:,i*self.frame:(i+1)*self.frame] = x[:,:,perm*self.frame:(perm+1)*self.frame]
+
+        lam1, lam2 = self.mixup_in.get_lambda(batch_size)
+        lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
+        x = lam1[:,None,None]*x + lam2[:,None,None]*x_mix
+        return x
+
+    def forward(self, x, y=None, w=None, mask=None):
         if self.training:
             power = random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
             batch_size = x.shape[0]
+
+            if (random.uniform(0,1) < self.cfg.mixup_in_prob1):
+                x0 = self.wavtoimg(x[:,0,0,:], power)*mask[:,0,0,:,:] if random.uniform(0,1) < 0.0 else self.wavtoimg(x[:,0,0,:], power)
+                x0_mix  = self.wavtoimg(x[:,0,1,:], power)*mask[:,0,1,:,:] if random.uniform(0,1) < 0.5 else self.wavtoimg(x[:,0,1,:], power)
+                x0 = self.inner_mixup(x0, x0_mix, batch_size)
+            if (random.uniform(0,1) < self.cfg.mixup_in_prob2):
+                x1 = self.wavtoimg(x[:,1,0,:], power)*mask[:,1,0,:,:] if random.uniform(0,1) < 0.0 else self.wavtoimg(x[:,1,0,:], power)
+                x1_mix  = self.wavtoimg(x[:,1,1,:], power)*mask[:,1,1,:,:] if random.uniform(0,1) < 0.5 else self.wavtoimg(x[:,1,1,:], power)
+                x1 = self.inner_mixup(x1, x1_mix, batch_size)
             if (random.uniform(0,1) < self.cfg.mixup_out_prob):
                 lam1, lam2 = self.mixup_out.get_lambda(batch_size)
                 lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
-                x = lam1[:,None,None]*self.wavtoimg(x[:,0,:], power) + lam2[:,None,None]*self.wavtoimg(x[:,1,:], power)
+                x = lam1[:,None,None]*x0 + lam2[:,None,None]*x1
                 y = lam1[:,None]*y[:,0,:] + lam2[:,None]*y[:,1,:]
             else:
-                x = self.wavtoimg(x[:,0,:], power)
+                x = x0
                 y = y[:,0,:]
         else:
             x = self.wavtoimg(x)
-        x  = x[:,None,:,:-1]
+        x  = x[:,None,:,:]
         if  self.training:
-            if (random.uniform(0,1) < self.cfg.mixup_in_prob):
-                x_mix = torch.zeros_like(x).to(x.device)
-                perms = torch.randperm(self.factor).to(x.device)
-                for i, perm in enumerate(perms):
-                    x_mix[:,:,:,i*self.frame:(i+1)*self.frame] = x[:,:,:,perm*self.frame:(perm+1)*self.frame]
-
-                lam1, lam2 = self.mixup_in.get_lambda(batch_size)
-                lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
-                x = lam1[:,None,None,None]*x + lam2[:,None,None,None]*x_mix
-
-            #x  = x[:,:,:,:self.factor*self.frame]
-
-            #print(x.shape)
             b, c, f, t = x.shape
             x = x.permute(0, 3, 2, 1)
             x = x.reshape(b*self.factor, t//self.factor, f, c)

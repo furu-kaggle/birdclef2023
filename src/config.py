@@ -13,7 +13,7 @@ class CFG:
     #image parameter
     sr = 32000
     period = 30
-    n_mel = 64
+    n_mel = 128
     fmin = 50
     fmax = 14000
     power = 2
@@ -23,6 +23,8 @@ class CFG:
     frame = 500
     augpower_min = 1.9
     augpower_max = 2.1
+    mixup_in_prob1 = 1.0
+    mixup_in_prob2 = 1.0
     mixup_out_prob = 0.15
     mixup_in_prob = 1.0
     backbone_dropout = 0.2
@@ -38,10 +40,10 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 10
+    batch_size = 30
 
     #前処理CPUコア数
-    workers = 14
+    workers = 30
 
     #学習率 (best range 5e-9~2e-4)
     lr = 5e-3
@@ -53,10 +55,15 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 35
+    epochs = 40
 
     #factor update
-    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
+    #factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(30)])
+    factors = list([9,9,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
+
+    batch_factor = {
+        9:1,8:1,7:1,6:1,5:2,4:2,3:3,2:3,1:3
+    }
 
     #lr ratio (best fit 3)
     lr_ratio = 5

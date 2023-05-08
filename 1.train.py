@@ -1,4 +1,4 @@
-import os,sys,re,glob,random
+import os,sys,re,glob,random, pickle
 
 # For descriptive error messages
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -68,7 +68,7 @@ def run(foldtrain=False):
             drop_last=True,
             num_workers=CFG.workers,
         )
-        wandb_flg = True
+        wandb_flg = False
 
     else:
         train = df
@@ -102,11 +102,15 @@ def run(foldtrain=False):
     train["sample_weight"] = train["label_count"]**(1/4)/train["label_count"]
 
     #trainer.valid_one_cycle(valid_loader, 0)
+
+    #experimental
+    try:
+        with open('data/mask_array.pkl', 'rb') as f:
+            mask_array = pickle.load(f)
+    except:
+            mask_array = None
+
     for epoch in range(CFG.epochs):
-        # downsample_train = pd.concat([
-        #         train[train['label_id'] == label].sample(min(CFG.sample_size, count), random_state=epoch, replace=False)
-        #                         for label, count in train['label_id'].value_counts().items()             
-        # ]).reset_index(drop=True)
         train_sampler = torch.utils.data.WeightedRandomSampler(
             list(train["sample_weight"].values),
             len(train),
@@ -119,16 +123,17 @@ def run(foldtrain=False):
              prilabelp = CFG.prilabelp,
              seclabelp = CFG.seclabelp,
              smooth=CFG.smooth,
-             period = int(5 * CFG.factors[epoch])
+             period = int(5 * CFG.factors[epoch]),
+             mask = mask_array if mask_array is not None else None
          )
-        batch_factor = 1#min(2, int(15/CFG.factors[epoch]))
+        batch_factor = CFG.batch_factor[CFG.factors[epoch]]
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
             drop_last=True,
             pin_memory=True,
             shuffle = False,
-            num_workers=CFG.workers*batch_factor,
+            num_workers=CFG.workers,
             sampler = train_sampler
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
@@ -139,7 +144,7 @@ def run(foldtrain=False):
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
-            if (epoch > 25):
+            if (epoch > 30):
                 try:
                     savename = CFG.weight_dir + f"model_{epoch}.bin"
                     torch.save(trainer.model.state_dict(),savename)
@@ -187,9 +192,6 @@ df["weight"] = df["rating"] / df["rating"].max()
 
 #df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
 
-loopaugdf = pd.read_csv("data/loopaugdf.csv")
-df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)
-
 #ユニークキー
 CFG.unique_key = unique_key
 
@@ -214,10 +216,10 @@ set_seed(35)
 CFG.key = "all_35"
 run(foldtrain=False)
 
-set_seed(355)
-CFG.key = "all_355"
-run(foldtrain=False)
+# set_seed(355)
+# CFG.key = "all_355"
+# run(foldtrain=False)
 
-set_seed(311)
-CFG.key = "all_311"
-run(foldtrain=False)
+# set_seed(311)
+# CFG.key = "all_311"
+# run(foldtrain=False)

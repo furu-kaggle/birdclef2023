@@ -66,13 +66,14 @@ class Trainer:
         record = Record(self.CFG)
 
         pbar = tqdm(enumerate(train_loader),total=len(train_loader))
-        for idx,(data, label, weight) in pbar:
+        for idx,(data, label, weight, mask) in pbar:
             data =  data.to(self.device, dtype=torch.float)
             label = label.to(self.device, dtype=torch.float)
             weight = weight.to(self.device, dtype=torch.float)
+            mask = mask.to(self.device, dtype=torch.float)
             
             self.optimizer.zero_grad()
-            pred, loss = self.model(data, label, weight)       
+            pred, loss = self.model(data, label, weight, mask)       
             record.update(pred, label)
             total_loss += (loss.detach().item() * label.size(0))
             total_nums += label.size(0)
@@ -110,24 +111,24 @@ class Trainer:
                 pbar.set_description("[ploss %f sloss %f]" % (record.get_loss()[0],record.get_loss()[1]))
         
         score_list = record.get_valdf()
-        wandb.log(
-            {
-                "primary_loss": record.get_loss()[0], 
-                "secondary_loss": record.get_loss()[1],
-                "mean_score":score_list.mean(),
-                "25% quantile score":np.percentile(score_list, 25),
-                "50% quantile score":np.percentile(score_list, 50),
-                "75% quantile score":np.percentile(score_list, 75),
-                "max_score":score_list.max(),
-                "min score":score_list.min(),
-                "score variance":score_list.std(),
-            }
-        )
+        # wandb.log(
+        #     {
+        #         "primary_loss": record.get_loss()[0], 
+        #         "secondary_loss": record.get_loss()[1],
+        #         "mean_score":score_list.mean(),
+        #         "25% quantile score":np.percentile(score_list, 25),
+        #         "50% quantile score":np.percentile(score_list, 50),
+        #         "75% quantile score":np.percentile(score_list, 75),
+        #         "max_score":score_list.max(),
+        #         "min score":score_list.min(),
+        #         "score variance":score_list.std(),
+        #     }
+        # )
 
         print(f"epoch:{epoch} val result, ploss:{record.get_loss()[0]}, sloss:{record.get_loss()[1]}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
         print(f"mean score {score_list.mean()}, 25% score{np.percentile(score_list, 25)} 50% score{np.percentile(score_list, 50)}, 75% score{np.percentile(score_list, 75)}" , file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
         print(f"max score {score_list.max()}, min score {score_list.min()}, variance {score_list.std()}" , file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
-        savename = self.CFG.weight_dir + f"model_{record.get_loss()[0]:.3f}_{self.CFG.key}.bin"
+        savename = self.CFG.weight_dir + f"model_{score_list.mean():.3f}_{self.CFG.key}.bin"
         torch.save(self.model.state_dict(),savename)
         for path in sorted(glob.glob(self.CFG.weight_dir + f"model_*_{self.CFG.key}.bin"), reverse=True)[1:]:
             os.remove(path)
