@@ -33,31 +33,25 @@ import audiomentations as AA
 train_aug = AA.Compose(
     [
         AA.AddBackgroundNoise(
-            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.5
+            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.25
         ),
         AA.AddBackgroundNoise(
-            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.5
+            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.25
         ),
         AA.AddBackgroundNoise(
             sounds_path="data/aicrowd2020_noise_30sec/noise_30sec",
             min_snr_in_db=5,
             max_snr_in_db=10,
-            p=0.75,
+            p=0.25,
         ),
         AA.AddBackgroundNoise(
-            sounds_path="data/esc50/useesc50",
+            sounds_path="data/useesc50",
             min_snr_in_db=3,
             max_snr_in_db=10,
-            p=0.5,
+            p=0.25,
         ),
         AA.AddGaussianSNR(
             min_snr_in_db=5.0,max_snr_in_db=10.0,p=0.25
-        ),
-        AA.Shift(
-            min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
-        ),
-        AA.LowPassFilter(
-            min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
         )
     ]
 )
@@ -151,10 +145,11 @@ class WaveformDataset(Dataset):
         data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
-        if row.label_id != -1:
-            labels[row.label_id] = self.prilabelp
         if row.sec_num != 0:
             labels[row.labels_id] = self.seclabelp
+        if row.label_id != -1:
+            labels[row.label_id] = self.prilabelp
+
 
         return data, labels
     
