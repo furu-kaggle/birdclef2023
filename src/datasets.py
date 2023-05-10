@@ -186,7 +186,7 @@ class WaveformDataset(Dataset):
                 pair_label_id = np.random.choice(self.mixup_idlist[row.label_id])
                 pair_idx = np.random.choice(self.id2record[pair_label_id])
                 row2 = self.df.iloc[pair_idx]
-                audio2, label2 = self.load_audio(row)
+                audio2, label2 = self.load_audio(row2)
                 audio = np.stack([audio1,audio2])
                 label = np.stack([label1,label2])
             else:

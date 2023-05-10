@@ -119,7 +119,7 @@ def run(foldtrain=False):
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
-            if (epoch > 25):
+            if (epoch > 30):
                 try:
                     savename = CFG.weight_dir + f"model_{epoch}.bin"
                     torch.save(trainer.model.state_dict(),savename)
@@ -178,8 +178,8 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-# CFG.key = "eval"
-# run(foldtrain=True)
+CFG.key = "eval"
+run(foldtrain=True)
 
 def set_seed(seed: int = 42):
     random.seed(seed)

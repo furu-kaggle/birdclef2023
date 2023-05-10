@@ -112,7 +112,7 @@ class Trainer:
         print(f"epoch:{epoch} val result, ploss:{record.get_loss()[0]}, sloss:{record.get_loss()[1]}", file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
         print(f"mean score {score_list.mean()}, 25% score{np.percentile(score_list, 25)} 50% score{np.percentile(score_list, 50)}, 75% score{np.percentile(score_list, 75)}" , file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
         print(f"max score {score_list.max()}, min score {score_list.min()}, variance {score_list.std()}" , file=codecs.open(self.CFG.weight_dir + 'logging.txt', 'a', 'utf-8'))
-        savename = self.CFG.weight_dir + f"model_{record.get_loss()[0]:.3f}_{self.CFG.key}.bin"
+        savename = self.CFG.weight_dir + f"model_{score_list.mean():.3f}_{self.CFG.key}.bin"
         torch.save(self.model.state_dict(),savename)
         for path in sorted(glob.glob(self.CFG.weight_dir + f"model_*_{self.CFG.key}.bin"), reverse=True)[1:]:
             os.remove(path)
