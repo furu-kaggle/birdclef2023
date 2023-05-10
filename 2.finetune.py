@@ -10,6 +10,7 @@ import soundfile as sf
 import numpy as np
 import ast, joblib
 from pathlib import Path
+import torchaudio
 
 import librosa.display
 from sklearn import preprocessing
@@ -43,10 +44,9 @@ from finetune_src import Trainer, Model, WaveformDataset, CFG, EvalWaveformDatas
 device = torch.device("cuda")
 def run(foldtrain=False):
     model = Model(CFG)
-    model.load_state_dict(torch.load(CFG.pretrainpath),strict=False)
-    model.to(device)
     
     if foldtrain:
+        model.load_state_dict(torch.load(CFG.eval_pretrainpath),strict=False)
         train = df[~df["eval"].astype(bool)].reset_index(drop=True)
         test =  df[df["eval"].astype(bool)].reset_index(drop=True)
 
@@ -65,7 +65,10 @@ def run(foldtrain=False):
         )
 
     else:
+        model.load_state_dict(torch.load(CFG.all_pretrainpath),strict=False)
         train = df
+        
+    model.to(device)
         
     optimizer = CFG.get_optimizer(
         model, 
@@ -98,7 +101,8 @@ def run(foldtrain=False):
         len(train),
         replacement=True
     )
-    #trainer.valid_one_cycle(valid_loader, 0)
+    if foldtrain:
+        trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         model.factor = CFG.factors[epoch]
         train_set = WaveformDataset(
@@ -195,10 +199,10 @@ set_seed(35)
 CFG.key = "all_35"
 run(foldtrain=False)
 
-# set_seed(355)
-# CFG.key = "all_355"
-# run(foldtrain=False)
+set_seed(355)
+CFG.key = "all_355"
+run(foldtrain=False)
 
-# set_seed(311)
-# CFG.key = "all_311"
-# run(foldtrain=False)
+set_seed(311)
+CFG.key = "all_311"
+run(foldtrain=False)

@@ -38,10 +38,10 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 90
+    batch_size = 100
 
     #前処理CPUコア数
-    workers = 30
+    workers = 20
 
     #学習率 (best range 5e-9~2e-4)
     lr = 1e-3
@@ -53,10 +53,10 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 10
+    epochs = 30
 
     #factor update
-    factors = list([1,1,1,1,1,1,1,1,1,1,1,1,1,1])
+    factors = list([1])*epochs
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -68,7 +68,9 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/f7ecdf256a4a32e877746c5f78080be047249f86/model_0.862_eval.bin"
+    eval_pretrainpath = "data/a60f790abdb96cc645eb87ef0a7fb624844a981b/model_0.860_eval.bin"
+
+    all_pretrainpath = "data/a60f790abdb96cc645eb87ef0a7fb624844a981b/model_all_last.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "finetune_src/weight/exp/"
@@ -84,7 +86,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=10, 
+            t_initial=30, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
