@@ -12,8 +12,8 @@ from madgrad import MADGRAD
 class CFG:
     #image parameter
     sr = 32000
-    period = 30
-    n_mel = 128
+    period = 5
+    n_mel = 64
     fmin = 50
     fmax = 14000
     power = 2
@@ -23,9 +23,9 @@ class CFG:
     frame = 500
     augpower_min = 1.9
     augpower_max = 2.1
-    mixup_out_prob = 0.15
-    mixup_in_prob1 = 1.0
-    mixup_in_prob2 = 1.0
+    mixup_out_prob = 0.3
+    mixup_in_prob1 = 0.5
+    mixup_in_prob2 = 0.5
     backbone_dropout = 0.2
     backbone_droppath = 0.2
     head_dropout = 0.2
@@ -39,7 +39,7 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 15
+    batch_size = 20
 
     #前処理CPUコア数
     workers = 30
@@ -57,7 +57,11 @@ class CFG:
     epochs = 35
 
     #factor update
-    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
+    #factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
+
+    qant_factor = [max(0.5, 1.0 - 0.05*i) for i in range(epochs)]
+
+    max_factor = 15
 
     batch_factor = {
         15:1,14:1,13:1,12:1,11:1,10:1,9:1,8:1,
@@ -74,7 +78,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_0.881_eval.bin"
+    pretrainpath = "data/pretrain_weightmodel_all_last.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"

@@ -97,13 +97,13 @@ class Model(nn.Module):
         melimg= self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
-        return img
+        return img[:,:,:-1]
 
     def gem_pooling(self, x, p=3, eps=1e-6):
         return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
 
-    def inner_mixup(self, x, x_mix, batch_size):        
-        perms = torch.randperm(self.factor).to(x.device)
+    def inner_mixup(self, x, x_mix, batch_size, factor):
+        perms = torch.randperm(factor).to(x.device)
         for i, perm in enumerate(perms):
             x_mix[:,:,i*self.frame:(i+1)*self.frame] = x[:,:,perm*self.frame:(perm+1)*self.frame]
 
@@ -115,14 +115,17 @@ class Model(nn.Module):
     def forward(self, x, y=None, w=None):
         if self.training:
             power = random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
-            batch_size = x.shape[0]
+            batch_size = x.shape[1]
+            x0 = self.wavtoimg(x[0,:,:], power)
+            x1 = self.wavtoimg(x[1,:,:], power)
+            factor = x0.shape[2]//500
 
             if (random.uniform(0,1) < self.cfg.mixup_in_prob1):
-                x0, x0_mix = self.wavtoimg(x[:,0,0,:], power), self.wavtoimg(x[:,0,1,:], power)
-                x0 = self.inner_mixup(x0, x0_mix, batch_size)
+                x0 = self.inner_mixup(x0, x0, batch_size, factor)
+
             if (random.uniform(0,1) < self.cfg.mixup_in_prob2):
-                x1, x1_mix = self.wavtoimg(x[:,1,0,:], power), self.wavtoimg(x[:,1,1,:], power)
-                x1 = self.inner_mixup(x1, x1_mix, batch_size)
+                x1 = self.inner_mixup(x1, x1, batch_size, factor)
+
             if (random.uniform(0,1) < self.cfg.mixup_out_prob):
                 lam1, lam2 = self.mixup_out.get_lambda(batch_size)
                 lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
@@ -133,18 +136,18 @@ class Model(nn.Module):
                 y = y[:,0,:]
         else:
             x = self.wavtoimg(x)
-        x  = x[:,None,:,:-1]
+        x  = x[:,None,:,:]
         if  self.training:
             #print(x.shape)
             b, c, f, t = x.shape
             x = x.permute(0, 3, 2, 1)
-            x = x.reshape(b*self.factor, t//self.factor, f, c)
+            x = x.reshape(b*factor, t//factor, f, c)
             x = x.permute(0, 3, 2, 1)
             #print(x.shape)
             x = self.model(x)
             b, c, f, t = x.shape
             x = x.permute(0, 3, 2, 1)
-            x = x.reshape(b//self.factor, t*self.factor, f, c)
+            x = x.reshape(b//factor, t*factor, f, c)
             x = x.permute(0, 3, 2, 1)
         else:
             x = self.model(x)

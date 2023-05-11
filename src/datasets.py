@@ -67,7 +67,6 @@ class WaveformDataset(Dataset):
     def __init__(self,
                  CFG,
                  df: pd.DataFrame,
-                 period = 5,
                  prilabelp=1.0,
                  seclabelp=0.5,
                  mixup_prob = 0.15,
@@ -79,7 +78,6 @@ class WaveformDataset(Dataset):
         self.CFG = CFG
         self.aug = train_aug
         self.sr = CFG.sr
-        self.period = period
         self.df["sort_index"] = self.df.index
         self.smooth = smooth
         self.prilabelp = prilabelp - smooth
@@ -127,18 +125,8 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
-
-        if (self.train)&(self.period >= 30):
-            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
-            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
-            if (self.train)&(duration_seconds > max(35, self.period + 5)):
-                offset = random.uniform(0, duration_seconds - self.period)
-            else:
-                offset = 0
-        else:
-            offset = 0
         #データ読み込み
-        data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
+        data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=0, mono=True)
 
         #augemnt1
         if (self.train)&(random.uniform(0,1) < row.weight):
@@ -150,30 +138,7 @@ class WaveformDataset(Dataset):
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
         
-        data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
-
-        if self.train:
-            #add train data
-            if row.sec_num==0:
-                pair_idx = np.random.choice(self.id2record[row.label_id])
-                row_pair = self.df.iloc[pair_idx]
-                data_pair, sr = librosa.load(row.audio_paths, sr=self.sr, offset=0, duration=self.period, mono=True)
-                #augemnt2
-                if (random.uniform(0,1) < row.weight):
-                    data_pair = self.aug(samples=data_pair, sample_rate=sr)
-
-            else:
-                data_pair = data
-
-            #test datasetの最大長
-            max_sec = len(data_pair)//sr
-
-            #0秒の場合は１秒として取り扱う
-            max_sec = 1 if max_sec==0 else max_sec
-        
-            data_pair = self.crop_or_pad(data_pair, length=sr*self.period,is_train=False)
-
-            data = np.stack([data, data_pair])
+        #data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
         if row.sec_num != 0:
@@ -194,14 +159,52 @@ class WaveformDataset(Dataset):
                 pair_idx = np.random.choice(self.id2record[pair_label_id])
                 row2 = self.df.iloc[pair_idx]
                 audio2, label2 = self.load_audio(row2)
-                audio = np.stack([audio1,audio2])
-                label = np.stack([label1,label2])
+                label = torch.stack([label1,label2])
             else:
-                audio = np.stack([audio1,audio1])
-                label = np.stack([label1,label1])
+                audio2 = audio1
+                label = torch.stack([label1,label1])
         else:
             audio = audio1
             label = label1
         weight = torch.tensor(row.weight, dtype=torch.float32)
-        audio = torch.tensor(audio, dtype=torch.float32)
-        return audio, label, weight
+        return audio1, audio2, label, weight
+
+
+class DynamicalPaddingCollate:
+    def __init__(self,CFG, quant_th):
+            self.CFG = CFG
+            self.quant_th = quant_th
+            self.unit = self.CFG.period*self.CFG.sr
+            self.cutoff = self.CFG.max_factor*self.CFG.period*self.CFG.sr
+            
+    def crop_or_pad(self, y, length, start=None,is_train=False):
+        if len(y) < length:
+            y = np.concatenate([y, np.zeros(length - len(y))])
+            
+        elif len(y) > length:
+            if not is_train:
+                start = start or 0
+            else:
+                start = start or np.random.randint(len(y) - length)
+
+            y = y[start:start + length]
+
+        return y
+        
+    def __call__(self, batch):
+        audios1, audios2, labels, weights = list(zip(*batch))
+
+        # calculate max time length of this batch
+        time_array = np.append(
+            np.array([len(ad) for ad in audios1]),
+            np.array([len(ad) for ad in audios2]),
+        axis=0)
+        padding_len = int(np.quantile(time_array, self.quant_th))
+        time_max = min(self.cutoff, padding_len)
+        #frame Nomalization
+        time_max = time_max//self.unit * self.unit
+        audios1 = torch.stack([torch.tensor(self.crop_or_pad(ad, length = time_max),dtype=torch.float32) for ad in audios1])
+        audios2 = torch.stack([torch.tensor(self.crop_or_pad(ad, length = time_max),dtype=torch.float32) for ad in audios2])
+        audios = torch.stack([audios1, audios2])
+
+        return audios, torch.stack(labels), torch.stack(weights)

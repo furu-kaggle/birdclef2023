@@ -38,7 +38,7 @@ from audiomentations import (
 )
 import timm
 
-from src import Trainer, Model, WaveformDataset, CFG, EvalWaveformDataset
+from src import Trainer, Model, WaveformDataset, CFG, EvalWaveformDataset, DynamicalPaddingCollate
 
 device = torch.device("cuda")
 def run(foldtrain=False):
@@ -98,16 +98,16 @@ def run(foldtrain=False):
     )
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
-        model.factor = CFG.factors[epoch]
+        #model.factor = CFG.factors[epoch]
         train_set = WaveformDataset(
              CFG = CFG,
              df=train,
              prilabelp = CFG.prilabelp,
              seclabelp = CFG.seclabelp,
              smooth=CFG.smooth,
-             period = int(5 * CFG.factors[epoch])
+             #period = int(5 * CFG.factors[epoch])
          )
-        batch_factor = CFG.batch_factor[CFG.factors[epoch]]
+        batch_factor = 1#CFG.batch_factor[CFG.factors[epoch]]
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
@@ -115,7 +115,8 @@ def run(foldtrain=False):
             pin_memory=True,
             #shuffle = True,
             num_workers=CFG.workers,
-            sampler = train_sampler
+            sampler = train_sampler,
+            collate_fn = DynamicalPaddingCollate(CFG, quant_th=CFG.qant_factor[epoch])
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)

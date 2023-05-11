@@ -1,4 +1,4 @@
-from .datasets import WaveformDataset
+from .datasets import WaveformDataset, DynamicalPaddingCollate
 from .eval_datasets import EvalWaveformDataset
 from .models import Model
 from .Record import Record
