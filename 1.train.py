@@ -114,7 +114,8 @@ def run(foldtrain=False):
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
         if foldtrain:
-            trainer.valid_one_cycle(valid_loader,epoch)
+            if (epoch > 10):
+                trainer.valid_one_cycle(valid_loader,epoch)
         else:
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
@@ -163,9 +164,9 @@ df = pd.concat([df,addtrain]).reset_index(drop=True)
 
 print(df)
 
-df["weight"] = df["rating"] / df["rating"].max()
+#df["weight"] = df["rating"] / df["rating"].max()
 
-#df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
+df["weight"] = np.clip(df["rating"] / df["rating"].max(), 0.1, 1.0)
 
 loopaugdf = pd.read_csv("data/loopaugdf.csv")
 df = pd.merge(df, loopaugdf, on=["filename_id"], how="left").fillna(False)

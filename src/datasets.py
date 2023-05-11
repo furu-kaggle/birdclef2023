@@ -52,12 +52,6 @@ train_aug = AA.Compose(
         ),
         AA.AddGaussianSNR(
             min_snr_in_db=5,max_snr_in_db=10.0,p=0.25
-        ),
-        AA.Shift(
-            min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
-        ),
-        AA.LowPassFilter(
-            min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
         )
     ]
 )
@@ -127,16 +121,6 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
-        # if (self.train)&(row.sec > 10):
-        #     if row["10sloopflg"]:
-        #         shift_level = 10
-        #     elif row["5sloopflg"]:
-        #         shift_level = 5
-        #     else:
-        #         shift_level = 0
-        # else:
-        #     shift_level = 0
-
         if (self.train)&(self.period >= 30):
             duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
             #訓練時にはランダムにスタートラインを変える(time shift augmentations)
@@ -148,18 +132,9 @@ class WaveformDataset(Dataset):
             offset = 0
         #データ読み込み
         data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
-
-        # if (self.train)&(offset < 5)&(shift_level >= 5):
-        #     stride = int(sr*(shift_level-offset))
-        #     data = np.roll(data, -stride)
-
         #augemnt1
         if (self.train)&(random.uniform(0,1) < row.weight):
              data = self.aug(samples=data, sample_rate=sr)
-
-        # if (self.train):
-        #     if (random.uniform(0,1) < row.sampleweight):
-        #         data = self.aug(samples=data, sample_rate=sr)
 
         #test datasetの最大長
         max_sec = len(data)//sr
