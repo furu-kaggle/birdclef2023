@@ -120,9 +120,13 @@ class Model(nn.Module):
             if (random.uniform(0,1) < self.cfg.mixup_in_prob1):
                 x0, x0_mix = self.wavtoimg(x[:,0,0,:], power), self.wavtoimg(x[:,0,1,:], power)
                 x0 = self.inner_mixup(x0, x0_mix, batch_size)
+            else:
+                x0 = self.wavtoimg(x[:,0,0,:], power)
             if (random.uniform(0,1) < self.cfg.mixup_in_prob2):
                 x1, x1_mix = self.wavtoimg(x[:,1,0,:], power), self.wavtoimg(x[:,1,1,:], power)
                 x1 = self.inner_mixup(x1, x1_mix, batch_size)
+            else:
+                x1 = self.wavtoimg(x[:,1,0,:], power)
             if (random.uniform(0,1) < self.cfg.mixup_out_prob):
                 lam1, lam2 = self.mixup_out.get_lambda(batch_size)
                 lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
