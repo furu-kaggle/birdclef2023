@@ -13,7 +13,7 @@ class CFG:
     #image parameter
     sr = 32000
     period = 5
-    n_mel = 64
+    n_mel = 128
     fmin = 50
     fmax = 14000
     power = 2
@@ -59,9 +59,9 @@ class CFG:
     #factor update
     #factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
 
-    qant_factor = [max(0.3, 0.8 - 0.02*i) for i in range(epochs)]
+    qant_factor = [max(0.25, 0.8 - 0.02*i) for i in range(epochs)]
 
-    max_factor = 30
+    max_factor = 15
 
     #lr ratio (best fit 3)
     lr_ratio = 5
@@ -94,5 +94,5 @@ class CFG:
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
             warmup_prefix=True,
-            k_decay = 1.5
+            k_decay = 1
         )

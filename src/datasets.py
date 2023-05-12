@@ -138,8 +138,6 @@ class WaveformDataset(Dataset):
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
         
-        #data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
-        
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
         if row.sec_num != 0:
             labels[row.labels_id] = self.seclabelp
@@ -202,7 +200,7 @@ class DynamicalPaddingCollate:
         padding_len = int(np.quantile(time_array, self.quant_th))
         time_max = min(self.cutoff, padding_len)
         #frame Nomalization
-        time_max = time_max//self.unit * self.unit
+        time_max = max(self.unit, time_max//self.unit * self.unit)
         audios1 = torch.stack([torch.tensor(self.crop_or_pad(ad, length = time_max),dtype=torch.float32) for ad in audios1])
         audios2 = torch.stack([torch.tensor(self.crop_or_pad(ad, length = time_max),dtype=torch.float32) for ad in audios2])
         audios = torch.stack([audios1, audios2])
