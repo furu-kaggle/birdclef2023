@@ -98,14 +98,12 @@ def run(foldtrain=False):
     )
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
-        #model.factor = CFG.factors[epoch]
         train_set = WaveformDataset(
              CFG = CFG,
              df=train,
              prilabelp = CFG.prilabelp,
              seclabelp = CFG.seclabelp,
              smooth=CFG.smooth,
-             #period = int(5 * CFG.factors[epoch])
          )
         batch_factor = 1#CFG.batch_factor[CFG.factors[epoch]]
         train_loader = DataLoader(

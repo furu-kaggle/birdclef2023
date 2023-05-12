@@ -6,6 +6,7 @@ import soundfile as sf
 import numpy as np
 import ast, joblib
 from pathlib import Path
+from torch.cuda.amp import GradScaler, autocast
 
 import librosa.display
 from sklearn import preprocessing
@@ -49,6 +50,7 @@ class Trainer:
         self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
         self.device = device
         self.CFG = CFG
+        self.scaler = GradScaler()
     
     def train_one_cycle(self, train_loader, epoch):
         """
@@ -68,13 +70,16 @@ class Trainer:
             weight = weight.to(self.device, dtype=torch.float)
             
             self.optimizer.zero_grad()
-            pred, loss = self.model(data, label, weight)       
+            with autocast():
+                pred, loss = self.model(data, label, weight)
+
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            
             record.update(pred, label)
             total_loss += (loss.detach().item() * label.size(0))
             total_nums += label.size(0)
-            
-            loss.backward()
-            self.optimizer.step()
 
             pbar.set_description("[loss %f, lr %e]" % (total_loss / total_nums, self.optimizer.param_groups[0]['lr']))
 

@@ -10,7 +10,7 @@ import torchaudio as ta
 
 import librosa.display
 from sklearn import preprocessing
-
+from torch.cuda.amp import GradScaler, autocast
 #Deep learning from pytorch
 import torch, torchaudio
 import torch.nn as nn
@@ -94,9 +94,10 @@ class Model(nn.Module):
     
     def wavtoimg(self, wav, power=2):
         self.mel.power = power
-        melimg= self.mel(wav)
-        dbimg = self.ptodb(melimg)
-        img = (dbimg.to(torch.float32) + 80)/80
+        with autocast(enabled=False):
+            melimg= self.mel(wav)
+            dbimg = self.ptodb(melimg)
+            img = (dbimg.to(torch.float32) + 80)/80
         return img[:,:,:-1]
 
     def gem_pooling(self, x, p=3, eps=1e-6):
@@ -119,6 +120,7 @@ class Model(nn.Module):
             x0 = self.wavtoimg(x[0,:,:], power)
             x1 = self.wavtoimg(x[1,:,:], power)
             factor = x0.shape[2]//500
+            #print(factor)
 
             if (random.uniform(0,1) < self.cfg.mixup_in_prob1):
                 x0 = self.inner_mixup(x0, x0, batch_size, factor)

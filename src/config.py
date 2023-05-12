@@ -48,7 +48,7 @@ class CFG:
     lr = 5e-3
 
     #スケジューラーの最小学習率
-    min_lr = 1e-5
+    min_lr = 1e-4
 
     #ウォームアップステップ
     warmupstep = 0
@@ -59,14 +59,9 @@ class CFG:
     #factor update
     #factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
 
-    qant_factor = [max(0.5, 1.0 - 0.05*i) for i in range(epochs)]
+    qant_factor = [max(0.3, 0.8 - 0.02*i) for i in range(epochs)]
 
-    max_factor = 15
-
-    batch_factor = {
-        15:1,14:1,13:1,12:1,11:1,10:1,9:1,8:1,
-        7:2,6:2,5:3,4:3,3:5,2:5,1:6
-    }
+    max_factor = 30
 
     #lr ratio (best fit 3)
     lr_ratio = 5
