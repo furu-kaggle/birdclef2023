@@ -89,6 +89,11 @@ class WaveformDataset(Dataset):
         self.seclabelp = seclabelp - smooth
         self.train = train
 
+        cand_df = self.df[["filename_id","latitude","longitude"]].dropna().drop_duplicates()
+
+        candpair_df = cand_df.merge(cand_df,on=["latitude","longitude"],suffixes=("","_cand"))
+        cand_df = cand_df[cand_df.filename_id!=cand_df.filename_id_cand].reset_index(drop=True)
+        self.cand_dict = cand_df.groupby("filename_id").filename_id_cand.apply(list).to_dict()
         
 
         
@@ -201,11 +206,10 @@ class WaveformDataset(Dataset):
         row = self.df.iloc[idx]
         audio1, label1 = self.get_audio(row)
         if self.train:
-            if (self.CFG.mixup_fm)&(row.label_id in list(self.mixup_idlist.keys())):
+            if (self.CFG.mixup_fm)&(row.filename_id in self.cand_dict):
                 #FMからペアとなるラベルIDを取得
-                pair_label_id = np.random.choice(self.mixup_idlist[row.label_id])
-                pair_idx = np.random.choice(self.id2record[pair_label_id])
-                row2 = self.df.iloc[pair_idx]
+                filename_id = np.random.choice(self.cand_dict[row.filename_id])
+                row2 = self.df[self.df.filename_id == filename_id].iloc[0]
             else:
                 pair_idx = np.random.choice(len(self.df), p=self.df["mixup_weight"].values)
                 row2 = self.df.iloc[pair_idx]

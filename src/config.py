@@ -97,5 +97,5 @@ class CFG:
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
             warmup_prefix=True,
-            k_decay = 1.5
+            k_decay = 1
         )
