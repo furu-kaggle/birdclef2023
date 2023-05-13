@@ -23,7 +23,7 @@ class CFG:
     frame = 500
     augpower_min = 1.9
     augpower_max = 2.1
-    mixup_out_prob = 0.15
+    mixup_out_prob = 0.3
     mixup_in_prob = 1.0
     backbone_dropout = 0.2
     backbone_droppath = 0.2

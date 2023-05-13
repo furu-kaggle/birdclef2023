@@ -178,8 +178,8 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-# CFG.key = "eval"
-# run(foldtrain=True)
+CFG.key = "eval"
+run(foldtrain=True)
 
 def set_seed(seed: int = 42):
     random.seed(seed)

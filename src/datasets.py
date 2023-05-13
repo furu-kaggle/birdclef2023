@@ -53,9 +53,6 @@ train_aug = AA.Compose(
         AA.AddGaussianSNR(
             min_snr_in_db=5,max_snr_in_db=10.0,p=0.25
         ),
-        AA.Shift(
-            min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
-        ),
         AA.LowPassFilter(
             min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
         )
@@ -85,19 +82,6 @@ class WaveformDataset(Dataset):
         self.prilabelp = prilabelp - self.smooth
         self.seclabelp = seclabelp - self.smooth
         self.train = train
-
-        
-        #Matrix Factorization (サブラベル同士は相関なしとして扱う)
-        self.mfdf = self.df[(self.df.sec_num > 0)][["label_id","labels_id"]].explode("labels_id").reset_index(drop=True)
-        
-        #mixupするlabel_idリストを作成する
-        self.mixup_idlist = self.mfdf.groupby("label_id").labels_id.apply(list).to_dict()
-        
-        #mixupする先はシングルラベルにする
-        sdf = self.df[(self.df.sec_num==0)|(self.df.primary_label=="lotcor1")]
-        
-        #label_idリストからレコード番号を取得し、レコード番号からランダムサンプリングする
-        self.id2record = sdf.groupby("label_id").sort_index.apply(list)
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length//2:
@@ -127,16 +111,6 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def load_audio(self,row):
-        # if (self.train)&(row.sec > 10):
-        #     if row["10sloopflg"]:
-        #         shift_level = 10
-        #     elif row["5sloopflg"]:
-        #         shift_level = 5
-        #     else:
-        #         shift_level = 0
-        # else:
-        #     shift_level = 0
-
         if (self.train)&(self.period >= 30):
             duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
             #訓練時にはランダムにスタートラインを変える(time shift augmentations)
@@ -149,17 +123,9 @@ class WaveformDataset(Dataset):
         #データ読み込み
         data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
 
-        # if (self.train)&(offset < 5)&(shift_level >= 5):
-        #     stride = int(sr*(shift_level-offset))
-        #     data = np.roll(data, -stride)
-
         #augemnt1
         if (self.train)&(random.uniform(0,1) < row.weight):
              data = self.aug(samples=data, sample_rate=sr)
-
-        # if (self.train):
-        #     if (random.uniform(0,1) < row.sampleweight):
-        #         data = self.aug(samples=data, sample_rate=sr)
 
         #test datasetの最大長
         max_sec = len(data)//sr
@@ -181,17 +147,11 @@ class WaveformDataset(Dataset):
         row = self.df.iloc[idx]
         audio1, label1 = self.load_audio(row)
         if self.train:
-            if row.label_id in list(self.mixup_idlist.keys()):
-                #FMからペアとなるラベルIDを取得
-                pair_label_id = np.random.choice(self.mixup_idlist[row.label_id])
-                pair_idx = np.random.choice(self.id2record[pair_label_id])
-                row2 = self.df.iloc[pair_idx]
-                audio2, label2 = self.load_audio(row)
-                audio = np.stack([audio1,audio2])
-                label = np.stack([label1,label2])
-            else:
-                audio = np.stack([audio1,audio1])
-                label = np.stack([label1,label1])
+            pair_idx = np.random.choice(len(self.df))
+            row2 = self.df.iloc[pair_idx]
+            audio2, label2 = self.load_audio(row2)
+            audio = np.stack([audio1,audio2])
+            label = np.stack([label1,label2])
         else:
             audio = audio1
             label = label1
