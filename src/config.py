@@ -64,6 +64,8 @@ class CFG:
         7:2,6:2,5:3,4:3,3:5,2:5,1:6
     }
 
+    mixup_fm = True
+
     #lr ratio (best fit 3)
     lr_ratio = 5
 
@@ -74,7 +76,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_0.881_eval.bin"
+    pretrainpath = "data/pretrain_weightmodel_all_last.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
@@ -95,5 +97,5 @@ class CFG:
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
             warmup_prefix=True,
-            k_decay = 1.5
+            k_decay = 1
         )
