@@ -91,6 +91,7 @@ def run(foldtrain=False):
     train["label_count"] = train["primary_count"] + train["secondary_count"]
     train["sample_weight"] = train["label_count"]**(1/3)/train["label_count"]
     print("set sampler")
+    print(train["sample_weight"].describe())
     train_sampler = torch.utils.data.WeightedRandomSampler(
         list(train["sample_weight"].values),
         len(train),

@@ -27,6 +27,7 @@ from tqdm import tqdm
 from torch.nn.parameter import Parameter
 import copy, codecs
 import sklearn.metrics
+import concurrent.futures
 
 import audiomentations as AA
 
@@ -76,6 +77,8 @@ class WaveformDataset(Dataset):
                  ):
       
         self.df = df.reset_index(drop=True)
+        self.df["mixup_weight"] = self.df["sample_weight"]/self.df["sample_weight"].sum()
+        #self.label_weight = self.df.set_index("label_id").["sample_weight"]
         self.CFG = CFG
         self.aug = train_aug
         self.sr = CFG.sr
@@ -85,6 +88,8 @@ class WaveformDataset(Dataset):
         self.prilabelp = prilabelp - smooth
         self.seclabelp = seclabelp - smooth
         self.train = train
+
+        
 
         
         #Matrix Factorization (サブラベル同士は相関なしとして扱う)
@@ -98,6 +103,9 @@ class WaveformDataset(Dataset):
         
         #label_idリストからレコード番号を取得し、レコード番号からランダムサンプリングする
         self.id2record = sdf.groupby("label_id").sort_index.apply(list)
+
+        self.cache = {}
+        self.max_sec = max(self.CFG.factors)*5.0
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length//2:
@@ -121,57 +129,62 @@ class WaveformDataset(Dataset):
             y = y[start:start + length]
 
         return y
-        
-        
-    def __len__(self):
-        return len(self.df)
 
-    def load_audio(self,row):
-
+    def load_audio(self, row):
         if (self.train)&(self.period >= 30):
             duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
             #訓練時にはランダムにスタートラインを変える(time shift augmentations)
-            if (self.train)&(duration_seconds > max(35, self.period + 5)):
+            if duration_seconds > max(35, self.period + 5):
                 offset = random.uniform(0, duration_seconds - self.period)
             else:
                 offset = 0
         else:
             offset = 0
-        #データ読み込み
-        data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
+        #if row.filename_id in self.cache:
+            #print("cache mode")
+        #    data = self.cache[row.filename_id]
+        #else:
+        data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=0, duration=self.max_sec, mono=True)
+        
+        # memory size > 100GB
+        #if row.sample_weight > 0.5:
+        #    self.cache[row.filename_id] = data
 
+        return data
+
+    def preprocess_audio(self, data, row):
         #augemnt1
         if (self.train)&(random.uniform(0,1) < row.weight):
-             data = self.aug(samples=data, sample_rate=sr)
+             data = self.aug(samples=data, sample_rate=self.sr)
 
         #test datasetの最大長
-        max_sec = len(data)//sr
+        max_sec = len(data)//self.sr
 
         #0秒の場合は１秒として取り扱う
         max_sec = 1 if max_sec==0 else max_sec
         
-        data = self.crop_or_pad(data , length=sr*self.period,is_train=self.train)
+        data = self.crop_or_pad(data , length=self.sr*self.period, is_train=self.train)
+
+        return data
+
+    def __len__(self):
+        return len(self.df)
+
+    def get_audio(self, row):
+
+        data = self.load_audio(row)
+        data = self.preprocess_audio(data, row)
 
         if self.train:
             #add train data
             if row.sec_num==0:
                 pair_idx = np.random.choice(self.id2record[row.label_id])
                 row_pair = self.df.iloc[pair_idx]
-                data_pair, sr = librosa.load(row.audio_paths, sr=self.sr, offset=0, duration=self.period, mono=True)
-                #augemnt2
-                if (random.uniform(0,1) < row.weight):
-                    data_pair = self.aug(samples=data_pair, sample_rate=sr)
+                data_pair = self.load_audio(row_pair)
+                data_pair = self.preprocess_audio(data_pair, row_pair)
 
             else:
                 data_pair = data
-
-            #test datasetの最大長
-            max_sec = len(data_pair)//sr
-
-            #0秒の場合は１秒として取り扱う
-            max_sec = 1 if max_sec==0 else max_sec
-        
-            data_pair = self.crop_or_pad(data_pair, length=sr*self.period,is_train=False)
 
             data = np.stack([data, data_pair])
         
@@ -186,19 +199,19 @@ class WaveformDataset(Dataset):
     
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        audio1, label1 = self.load_audio(row)
+        audio1, label1 = self.get_audio(row)
         if self.train:
-            if row.label_id in list(self.mixup_idlist.keys()):
+            if (self.CFG.mixup_fm)&(row.label_id in list(self.mixup_idlist.keys())):
                 #FMからペアとなるラベルIDを取得
                 pair_label_id = np.random.choice(self.mixup_idlist[row.label_id])
                 pair_idx = np.random.choice(self.id2record[pair_label_id])
                 row2 = self.df.iloc[pair_idx]
-                audio2, label2 = self.load_audio(row2)
-                audio = np.stack([audio1,audio2])
-                label = np.stack([label1,label2])
             else:
-                audio = np.stack([audio1,audio1])
-                label = np.stack([label1,label1])
+                pair_idx = np.random.choice(len(self.df), p=self.df["mixup_weight"].values)
+                row2 = self.df.iloc[pair_idx]
+            audio2, label2 = self.get_audio(row2)
+            audio = np.stack([audio1,audio2])
+            label = np.stack([label1,label2])
         else:
             audio = audio1
             label = label1
