@@ -62,13 +62,14 @@ class Trainer:
         record = Record(self.CFG)
 
         pbar = tqdm(enumerate(train_loader),total=len(train_loader))
-        for idx,(data, label, weight) in pbar:
+        for idx,(data, label, weight, freqmask) in pbar:
             data =  data.to(self.device, dtype=torch.float)
             label = label.to(self.device, dtype=torch.float)
             weight = weight.to(self.device, dtype=torch.float)
+            freqmask = freqmask.to(self.device, dtype=torch.float)
             
             self.optimizer.zero_grad()
-            pred, loss = self.model(data, label, weight)       
+            pred, loss = self.model(data, label, weight, freqmask)       
             record.update(pred, label)
             total_loss += (loss.detach().item() * label.size(0))
             total_nums += label.size(0)

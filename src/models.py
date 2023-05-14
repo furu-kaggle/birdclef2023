@@ -92,11 +92,15 @@ class Model(nn.Module):
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
     
-    def wavtoimg(self, wav, power=2):
+    def wavtoimg(self, wav, freqmask=None, power=2):
         self.mel.power = power
-        melimg= self.mel(wav)
+        self.mel.spectrogram.power = power
+        melimg = self.mel(wav)
         dbimg = self.ptodb(melimg)
         img = (dbimg.to(torch.float32) + 80)/80
+        img = img[:,:,:-1]
+        if (freqmask is not None)&(random.uniform(0,1)< self.cfg.fm_prob):
+            img = img*freqmask
         return img
 
     def gem_pooling(self, x, p=3, eps=1e-6):
@@ -112,17 +116,27 @@ class Model(nn.Module):
         x = lam1[:,None,None]*x + lam2[:,None,None]*x_mix
         return x
 
-    def forward(self, x, y=None, w=None):
+    def forward(self, x, y=None, w=None, freqmask=None):
         if self.training:
             power = random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
             batch_size = x.shape[0]
 
             if (random.uniform(0,1) < self.cfg.mixup_in_prob1):
-                x0, x0_mix = self.wavtoimg(x[:,0,0,:], power), self.wavtoimg(x[:,0,1,:], power)
-                x0 = self.inner_mixup(x0, x0_mix, batch_size)
+                x0 = self.inner_mixup(
+                    self.wavtoimg(x[:,0,0,:], freqmask[:,0,0], power), 
+                    self.wavtoimg(x[:,0,1,:], freqmask[:,0,1], power), 
+                batch_size)
+            else:
+                x0 =self.wavtoimg(x[:,0,0,:], freqmask[:,0,0], power)
+
             if (random.uniform(0,1) < self.cfg.mixup_in_prob2):
-                x1, x1_mix = self.wavtoimg(x[:,1,0,:], power), self.wavtoimg(x[:,1,1,:], power)
-                x1 = self.inner_mixup(x1, x1_mix, batch_size)
+                x1 = self.inner_mixup(
+                    self.wavtoimg(x[:,1,0,:], freqmask[:,1,0], power), 
+                    self.wavtoimg(x[:,1,1,:], freqmask[:,1,1], power), 
+                batch_size)
+            else:
+                x1 =self.wavtoimg(x[:,1,0,:], freqmask[:,1,0], power)
+
             if (random.uniform(0,1) < self.cfg.mixup_out_prob):
                 lam1, lam2 = self.mixup_out.get_lambda(batch_size)
                 lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
@@ -133,7 +147,7 @@ class Model(nn.Module):
                 y = y[:,0,:]
         else:
             x = self.wavtoimg(x)
-        x  = x[:,None,:,:-1]
+        x  = x[:,None,:,:]
         if  self.training:
             #print(x.shape)
             b, c, f, t = x.shape

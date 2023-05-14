@@ -21,11 +21,12 @@ class CFG:
     prilabelp = 1.0
     seclabelp = 0.5
     frame = 500
-    augpower_min = 1.9
-    augpower_max = 2.1
-    mixup_out_prob = 0.15
-    mixup_in_prob1 = 1.0
-    mixup_in_prob2 = 1.0
+    augpower_min = 1.8
+    augpower_max = 2.2
+    mixup_out_prob = 0.5
+    mixup_in_prob1 = 0.5
+    mixup_in_prob2 = 0.5
+    fm_prob =  0.1
     backbone_dropout = 0.2
     backbone_droppath = 0.2
     head_dropout = 0.2
@@ -39,7 +40,7 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 15
+    batch_size = 30
 
     #前処理CPUコア数
     workers = 30
@@ -48,16 +49,16 @@ class CFG:
     lr = 5e-3
 
     #スケジューラーの最小学習率
-    min_lr = 1e-5
+    min_lr = 5e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 35
+    epochs = 40
 
     #factor update
-    factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
+    factors = list([10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//4) for i in range(epochs)])
 
     batch_factor = {
         15:1,14:1,13:1,12:1,11:1,10:1,9:1,8:1,

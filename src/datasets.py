@@ -28,7 +28,7 @@ from torch.nn.parameter import Parameter
 import copy, codecs
 import sklearn.metrics
 import concurrent.futures
-
+from numpy.lib.stride_tricks import sliding_window_view
 import audiomentations as AA
 
 train_aug = AA.Compose(
@@ -53,12 +53,6 @@ train_aug = AA.Compose(
         ),
         AA.AddGaussianSNR(
             min_snr_in_db=5,max_snr_in_db=10.0,p=0.25
-        ),
-        AA.Shift(
-            min_fraction=0.1, max_fraction=0.1, rollover=False, p=0.25
-        ),
-        AA.LowPassFilter(
-            min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
         )
     ]
 )
@@ -89,11 +83,11 @@ class WaveformDataset(Dataset):
         self.seclabelp = seclabelp - smooth
         self.train = train
 
-        cand_df = self.df[["filename_id","latitude","longitude"]].dropna().drop_duplicates()
+        # cand_df = self.df[["filename_id","latitude","longitude"]].dropna().drop_duplicates()
 
-        candpair_df = cand_df.merge(cand_df,on=["latitude","longitude"],suffixes=("","_cand"))
-        cand_df = cand_df[cand_df.filename_id!=cand_df.filename_id_cand].reset_index(drop=True)
-        self.cand_dict = cand_df.groupby("filename_id").filename_id_cand.apply(list).to_dict()
+        # candpair_df = cand_df.merge(cand_df,on=["latitude","longitude"],suffixes=("","_cand"))
+        # cand_df = cand_df[cand_df.filename_id!=cand_df.filename_id_cand].reset_index(drop=True)
+        # self.cand_dict = cand_df.groupby("filename_id").filename_id_cand.apply(list).to_dict()
         
 
         
@@ -111,6 +105,22 @@ class WaveformDataset(Dataset):
 
         self.cache = {}
         self.max_sec = max(self.CFG.factors)*5.0
+
+        boxdf = pd.read_csv("data/box.csv",index_col=0).reset_index().rename(columns={"index":"unique_id"})
+        boxdf["filename_id"] = boxdf["unique_id"].apply(lambda x: x.split("_")[0])
+        boxdf["time_id"] = boxdf["unique_id"].apply(lambda x: x.split("_")[1])
+        boxdf["box_id"] = boxdf["unique_id"].apply(lambda x: x.split("_")[2])
+        boxdf["start_x"] = boxdf["time_id"].astype(int)*500
+        boxdf["x1"] = boxdf["x1"] + boxdf["start_x"]
+        boxdf["y1"] = boxdf["y1"]
+        boxdf["x2"] = boxdf["x2"] + boxdf["start_x"]
+        boxdf["y2"] = boxdf["y2"]
+
+        # Group the DataFrame by 'filename_id'
+        grouped = boxdf.groupby('filename_id')
+
+        # Create a dictionary where the keys are the filename_ids and the values are the corresponding sub-dataframes (gdf)
+        self.gdf_dict = {name: group for name, group in grouped}
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length//2:
@@ -135,26 +145,44 @@ class WaveformDataset(Dataset):
 
         return y
 
-    def load_audio(self, row):
-        if (self.train)&(self.period >= 30):
-            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
-            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
-            if duration_seconds > max(35, self.period + 5):
-                offset = random.uniform(0, duration_seconds - self.period)
+    def get_offset(self, row):
+        #準備
+        if row.filename_id in self.gdf_dict:
+            gdf = self.gdf_dict[row.filename_id]
+            mask = np.zeros((128, gdf.start_x.max() + 500),dtype=np.float64)
+            for jdx, brow in gdf.iterrows():
+                mask[int(brow.y1):int(brow.y2),int(brow.x1):int(brow.x2)] += brow.conf
+            if mask.shape[1] > self.period*100:
+                sampling_weights = sliding_window_view(mask.max(axis=0), self.period*100).sum(axis=1)[::100]
+                sample_prob = sampling_weights/sampling_weights.sum()
             else:
-                offset = 0
+                sample_prob = None
+            mask_freq = np.argwhere(mask.sum(axis=1)==0)[:,0]
+            if len(mask_freq) > 40:
+                mask_freq = []
         else:
-            offset = 0
-        #if row.filename_id in self.cache:
-            #print("cache mode")
-        #    data = self.cache[row.filename_id]
-        #else:
-        data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=0, duration=self.max_sec, mono=True)
-        
-        # memory size > 100GB
-        #if row.sample_weight > 0.5:
-        #    self.cache[row.filename_id] = data
+            sample_prob = None
+            mask_freq = []
 
+        #periodより長いか判定する
+        duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
+        if duration_seconds < self.period:
+            #offsetを変えても情報が全て入っているので、0として扱う
+            offset = 0
+        else:
+            if sample_prob is not None:
+                #offsetを変えてシグナルから始まるようにする
+                offset = np.random.choice(len(sample_prob),p=sample_prob)
+            else:
+                offset = random.uniform(0, duration_seconds - self.period)
+        
+        mask_freq_array = np.ones((self.CFG.n_mel, self.period*100),dtype=bool)
+        mask_freq_array[mask_freq] = 0
+
+        return offset, mask_freq_array
+
+    def load_audio(self, row, offset):
+        data, sr = librosa.load(row.audio_paths, sr=self.sr, offset=offset, duration=self.period, mono=True)
         return data
 
     def preprocess_audio(self, data, row):
@@ -176,8 +204,8 @@ class WaveformDataset(Dataset):
         return len(self.df)
 
     def get_audio(self, row):
-
-        data = self.load_audio(row)
+        offset, freqmask = self.get_offset(row)
+        data = self.load_audio(row, offset)
         data = self.preprocess_audio(data, row)
 
         if self.train:
@@ -185,13 +213,17 @@ class WaveformDataset(Dataset):
             if row.sec_num==0:
                 pair_idx = np.random.choice(self.id2record[row.label_id])
                 row_pair = self.df.iloc[pair_idx]
-                data_pair = self.load_audio(row_pair)
+                offset, freqmask_pair = self.get_offset(row_pair)
+                data_pair = self.load_audio(row_pair, offset)
                 data_pair = self.preprocess_audio(data_pair, row_pair)
 
             else:
-                data_pair = data
+                offset, freqmask_pair = self.get_offset(row)
+                data_pair = self.load_audio(row, offset)
+                data_pair = self.preprocess_audio(data_pair, row)
 
             data = np.stack([data, data_pair])
+            freqmask = np.stack([freqmask, freqmask_pair])
         
         labels = torch.zeros(self.CFG.CLASS_NUM, dtype=torch.float32) + self.smooth
         if row.sec_num != 0:
@@ -200,25 +232,26 @@ class WaveformDataset(Dataset):
             labels[row.label_id] = self.prilabelp
         
 
-        return data, labels
+        return data, labels, freqmask
     
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        audio1, label1 = self.get_audio(row)
+        audio1, label1, freqmask1 = self.get_audio(row)
         if self.train:
-            if (self.CFG.mixup_fm)&(row.filename_id in self.cand_dict):
-                #FMからペアとなるラベルIDを取得
-                filename_id = np.random.choice(self.cand_dict[row.filename_id])
-                row2 = self.df[self.df.filename_id == filename_id].iloc[0]
-            else:
-                pair_idx = np.random.choice(len(self.df), p=self.df["mixup_weight"].values)
-                row2 = self.df.iloc[pair_idx]
-            audio2, label2 = self.get_audio(row2)
+            # if (self.CFG.mixup_fm)&(row.filename_id in self.cand_dict):
+            #     #FMからペアとなるラベルIDを取得
+            #     filename_id = np.random.choice(self.cand_dict[row.filename_id])
+            #     row2 = self.df[self.df.filename_id == filename_id].iloc[0]
+            # else:
+            pair_idx = np.random.choice(len(self.df), p=self.df["mixup_weight"].values)
+            row2 = self.df.iloc[pair_idx]
+            audio2, label2, freqmask2 = self.get_audio(row2)
             audio = np.stack([audio1,audio2])
             label = np.stack([label1,label2])
+            freqmask = np.stack([freqmask1,freqmask2])
         else:
             audio = audio1
             label = label1
         weight = torch.tensor(row.weight, dtype=torch.float32)
         audio = torch.tensor(audio, dtype=torch.float32)
-        return audio, label, weight
+        return audio, label, weight, freqmask
