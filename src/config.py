@@ -26,7 +26,7 @@ class CFG:
     mixup_out_prob = 0.5
     mixup_in_prob1 = 0.5
     mixup_in_prob2 = 0.5
-    fm_prob =  0.1
+    fm_prob =  0.25
     backbone_dropout = 0.2
     backbone_droppath = 0.2
     head_dropout = 0.2
@@ -40,7 +40,7 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 30
+    batch_size = 15
 
     #前処理CPUコア数
     workers = 30
@@ -49,20 +49,20 @@ class CFG:
     lr = 5e-3
 
     #スケジューラーの最小学習率
-    min_lr = 5e-5
+    min_lr = 3e-5
 
     #ウォームアップステップ
     warmupstep = 0
 
     #エポック数
-    epochs = 40
+    epochs = 55
 
     #factor update
-    factors = list([10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//4) for i in range(epochs)])
+    factors = list([15,10,9,9,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//4) for i in range(epochs)])
 
     batch_factor = {
-        15:1,14:1,13:1,12:1,11:1,10:1,9:1,8:1,
-        7:2,6:2,5:3,4:3,3:5,2:5,1:6
+        15:1,14:1,13:1,12:1,11:1,10:2,9:2,8:2,
+        7:2,6:2,5:2,4:2,3:3,2:3,1:3
     }
 
     mixup_fm = True
@@ -93,7 +93,7 @@ class CFG:
         # document:https://timm.fast.ai/SGDR
         return CosineLRScheduler(
             optimizer, 
-            t_initial=40, 
+            t_initial=55, 
             lr_min=min_lr, 
             warmup_t=warmupstep, 
             warmup_lr_init=warmup_lr_init, 
