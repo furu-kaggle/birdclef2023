@@ -23,7 +23,7 @@ class CFG:
     frame = 500
     augpower_min = 1.9
     augpower_max = 2.1
-    mixup_out_prob = 0.15
+    mixup_out_prob = 0.3
     mixup_in_prob1 = 0.5
     mixup_in_prob2 = 0.5
     backbone_dropout = 0.2
@@ -39,7 +39,7 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 10
+    batch_size = 8
 
     #前処理CPUコア数
     workers = 20
@@ -54,7 +54,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 45
+    epochs = 40
 
     #factor update
     factors = list([15,14,13,12,11,10,10,9,9,9,8,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//3) for i in range(epochs)])
@@ -62,11 +62,11 @@ class CFG:
     batch_factor = {
         #120:1,100:1,80:2,60:2,30:4,15:10,
         15:1,14:1,13:1,12:1,11:1,10:1,9:1,8:1,
-        7:2,6:2,5:3,4:3,3:3,2:3,1:3
+        7:2,6:2,5:2,4:3,3:3,2:3,1:3
     }
 
     #lr ratio (best fit 3)
-    lr_ratio = 10
+    lr_ratio = 5
 
     #label smoothing rate
     smooth = 0.005
@@ -75,7 +75,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_all_last.bin"
+    pretrainpath = "data/gemversion9.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
