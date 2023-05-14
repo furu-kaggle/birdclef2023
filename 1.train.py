@@ -108,7 +108,7 @@ def run(foldtrain=False):
              smooth=CFG.smooth,
              period = int(5 * CFG.factors[epoch])
          )
-        batch_factor = 1#CFG.batch_factor[CFG.factors[epoch]]
+        batch_factor = CFG.batch_factor[CFG.factors[epoch]]
         train_loader = DataLoader(
             train_set,
             batch_size=CFG.batch_size*batch_factor,
@@ -121,8 +121,8 @@ def run(foldtrain=False):
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
         if foldtrain:
-            #if (epoch > 10):
-            trainer.valid_one_cycle(valid_loader,epoch)
+            if (epoch > 20):
+                trainer.valid_one_cycle(valid_loader,epoch)
         else:
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"

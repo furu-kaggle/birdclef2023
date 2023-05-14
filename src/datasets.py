@@ -175,6 +175,8 @@ class WaveformDataset(Dataset):
                 offset = np.random.choice(len(sample_prob),p=sample_prob)
             else:
                 offset = random.uniform(0, duration_seconds - self.period)
+
+        mask_freq = [freq//2 for freq in mask_freq]
         
         mask_freq_array = np.ones((self.CFG.n_mel, self.period*100),dtype=bool)
         mask_freq_array[mask_freq] = 0
