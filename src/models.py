@@ -91,6 +91,7 @@ class Model(nn.Module):
             mel_scale = 'htk')
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
+        self.attention = nn.Sequential(nn.Linear(in_features, 512), nn.ReLU(), nn.Linear(512, 1))
     
     def wavtoimg(self, wav, freqmask=None, power=2):
         self.mel.power = power
@@ -163,7 +164,11 @@ class Model(nn.Module):
         else:
             x = self.model(x)
 
-        x = self.gem_pooling(x)[:,:,0,0]
+        #x = self.gem_pooling(x)[:,:,0,0]
+        x = x.mean(dim=2)
+        x = x.permute(0, 2, 1)
+        attn_weights = torch.softmax(self.attention(x), dim=1) ## (batch, time)
+        x = (x * attn_weights).sum(dim=1) ## (batch, time, features)
         x = self.dropout(x)
         x = self.fc(x)
         if (y is not None):
