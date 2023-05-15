@@ -75,7 +75,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/gemversion9.bin"
+    pretrainpath = "data/gemversion10.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
