@@ -91,7 +91,7 @@ class Model(nn.Module):
           self.model.load_state_dict(torch.load(path))
         
         in_features = self.model.num_features
-        self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
+        self.fc = nn.Linear(in_features*2, CFG.CLASS_NUM)
         init_layer(self.fc)
         self.dropout = nn.Dropout(p=CFG.head_dropout)
         
@@ -117,6 +117,7 @@ class Model(nn.Module):
         
         self.ptodb = torchaudio.transforms.AmplitudeToDB(top_db=CFG.top_db)
         self.gem = GeM()
+        self.attention = nn.Sequential(nn.Linear(in_features, 512), nn.ReLU(), nn.Linear(512, 1))
     
     def wavtoimg(self, wav, power=2):
         self.mel.power = power
@@ -127,7 +128,7 @@ class Model(nn.Module):
 
     def forward(self, x, y=None, w=None):
         if self.training:
-            power = random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
+            power = 2#random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
             batch_size = x.shape[0]
             if (random.uniform(0,1) < self.cfg.mixup_out_prob):
                 lam1, lam2 = self.mixup_out.get_lambda(batch_size)
@@ -167,7 +168,12 @@ class Model(nn.Module):
         else:
             x = self.model(x)
 
-        x = self.gem(x)[:,:,0,0]
+        xgem = self.gem(x)[:,:,0,0]
+        x = x.mean(dim=2)
+        x = x.permute(0, 2, 1)
+        attn_weights = torch.softmax(self.attention(x), dim=1)
+        xatt = (x * attn_weights).sum(dim=1)
+        x = torch.cat([xgem, xatt],axis=1)
         x = self.dropout(x)
         x = self.fc(x)
         if (y is not None):

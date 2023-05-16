@@ -21,10 +21,10 @@ class CFG:
     prilabelp = 1.0
     seclabelp = 0.5
     frame = 500
-    augpower_min = 1.9
-    augpower_max = 2.1
+    augpower_min = 2
+    augpower_max = 2
     mixup_out_prob = 0.5
-    mixup_in_prob = 1.0
+    mixup_in_prob = 0.5
     backbone_dropout = 0.2
     backbone_droppath = 0.2
     head_dropout = 0.2
@@ -38,10 +38,10 @@ class CFG:
     hop_len = 320
     
     #バッチサイズ
-    batch_size = 15
+    batch_size = 8
 
     #前処理CPUコア数
-    workers = 15
+    workers = 16
 
     #学習率 (best range 5e-9~2e-4)
     lr = 5e-3
