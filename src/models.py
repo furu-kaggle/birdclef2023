@@ -91,7 +91,7 @@ class Model(nn.Module):
           self.model.load_state_dict(torch.load(path))
         
         in_features = self.model.num_features
-        self.fc = nn.Linear(in_features*2, CFG.CLASS_NUM)
+        self.fc = nn.Linear(in_features, CFG.CLASS_NUM)
         init_layer(self.fc)
         self.dropout = nn.Dropout(p=CFG.head_dropout)
         
@@ -168,12 +168,12 @@ class Model(nn.Module):
         else:
             x = self.model(x)
 
-        xgem = self.gem(x)[:,:,0,0]
-        x = x.mean(dim=2)
-        x = x.permute(0, 2, 1)
-        attn_weights = torch.softmax(self.attention(x), dim=1)
-        xatt = (x * attn_weights).sum(dim=1)
-        x = torch.cat([xgem, xatt],axis=1)
+        x = self.gem(x)[:,:,0,0]
+        #x = x.mean(dim=2)
+        #x = x.permute(0, 2, 1)
+        #attn_weights = torch.softmax(self.attention(x), dim=1)
+        #xatt = (x * attn_weights).sum(dim=1)
+        #x = torch.cat([xgem, xatt],axis=1)
         x = self.dropout(x)
         x = self.fc(x)
         if (y is not None):

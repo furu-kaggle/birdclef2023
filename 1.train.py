@@ -42,7 +42,10 @@ from src import Trainer, Model, WaveformDataset, CFG, EvalWaveformDataset
 
 device = torch.device("cuda")
 def run(foldtrain=False):
-    model = Model(CFG, path = CFG.pretrainpath).to(device)
+    model = Model(CFG, path = None).to(device)
+    model.fc = nn.Linear(2304, 1059)
+    model.load_state_dict(torch.load(CFG.pretrainpath),strict=False)
+    model.fc = nn.Linear(model.model.num_features, CFG.CLASS_NUM).to(device)
     
     if foldtrain:
         train = df[~df["eval"].astype(bool)].reset_index(drop=True)

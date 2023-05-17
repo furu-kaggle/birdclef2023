@@ -27,7 +27,7 @@ class CFG:
     mixup_in_prob = 0.5
     backbone_dropout = 0.2
     backbone_droppath = 0.2
-    head_dropout = 0.2
+    head_dropout = 0
 
     mixup_alpha_in = 2.0
     mixup_alpha_out = 2.0
@@ -68,7 +68,7 @@ class CFG:
     model_name = 'eca_nfnet_l0'
 
     #pretrain model path
-    pretrainpath = "data/pretrain_weightmodel_all_last.bin"
+    pretrainpath = "data/model_5sec_e35.bin"
 
     #重みを保存するディレクトリ
     weight_dir = "src/weight/exp/"
