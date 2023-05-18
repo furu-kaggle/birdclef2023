@@ -74,6 +74,7 @@ class Mixup(object):
             inv_lams.append(1.0-lam)
         return torch.tensor(lams, dtype=torch.float32), torch.tensor(inv_lams, dtype=torch.float32)
 
+from timm.models.nfnet import ScaledStdConv2d
 class Model(nn.Module):
     def __init__(self,CFG,pretrained=False,path=None,training=True):
         super(Model, self).__init__()
@@ -87,8 +88,12 @@ class Model(nn.Module):
             global_pool="",
             num_classes=0,
         )
+        self.model.stem.conv1 = ScaledStdConv2d(1, 16, kernel_size=(3, 3), stride=(2, 1), padding=(1, 1))
+        
         if path is not None:
           self.model.load_state_dict(torch.load(path))
+
+        
         
         in_features = self.model.num_features
         self.fc = nn.Linear(in_features, CFG.CLASS_NUM)

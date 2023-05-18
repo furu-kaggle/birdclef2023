@@ -194,9 +194,9 @@ set_seed(352)
 CFG.key = "all_352"
 run(foldtrain=False)
 
-set_seed(3888)
-CFG.key = "all_3888"
-run(foldtrain=False)
+# set_seed(3888)
+# CFG.key = "all_3888"
+# run(foldtrain=False)
 
 # set_seed(311)
 # CFG.key = "all_311"
