@@ -89,7 +89,7 @@ def run(foldtrain=False):
     train["primary_count"] = train["label_id"].map(primary_label_counts_map)
     train["secondary_count"] = train["label_id"].map(secondary_label_counts_map).fillna(0)
     train["label_count"] = train["primary_count"] + train["secondary_count"]
-    train["sample_weight"] = train["label_count"]**(1/3)/train["label_count"]
+    train["sample_weight"] = 1.0/train["label_count"]
     print("set sampler")
     print(train["sample_weight"].describe())
     train_sampler = torch.utils.data.WeightedRandomSampler(
@@ -150,24 +150,24 @@ pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].rep
 pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
 df = pd.merge(df,pathdf[["filename_id","audio_paths"]],on=["filename_id"]).reset_index(drop=True)
 
-addtrain = pd.read_csv("data/add_train.csv",index_col=0).dropna(subset=["primary_label"])
-addtrain["secondary_labels"] = addtrain["secondary_labels"].apply(eval)
-addtrain.loc[:,"label_id"] = addtrain.loc[:,"primary_label"].map(label2id).fillna(-1).astype(int)
-addtrain.loc[:,"labels_id"] = addtrain.loc[:,"secondary_labels"].apply(lambda x: np.vectorize(
-    lambda s: label2id[s] if s in unique_key else -1)(x) if len(x)!=0 else np.array([-1]))
-addtrain.loc[:,"labels_id"] = addtrain.loc[:,"labels_id"].apply(lambda x: list(x[x != -1]))
-addtrain["sec_num"] = addtrain.loc[:,"labels_id"].apply(len)
-addtrain["eval"] = 0
+# addtrain = pd.read_csv("data/add_train.csv",index_col=0).dropna(subset=["primary_label"])
+# addtrain["secondary_labels"] = addtrain["secondary_labels"].apply(eval)
+# addtrain.loc[:,"label_id"] = addtrain.loc[:,"primary_label"].map(label2id).fillna(-1).astype(int)
+# addtrain.loc[:,"labels_id"] = addtrain.loc[:,"secondary_labels"].apply(lambda x: np.vectorize(
+#     lambda s: label2id[s] if s in unique_key else -1)(x) if len(x)!=0 else np.array([-1]))
+# addtrain.loc[:,"labels_id"] = addtrain.loc[:,"labels_id"].apply(lambda x: list(x[x != -1]))
+# addtrain["sec_num"] = addtrain.loc[:,"labels_id"].apply(len)
+# addtrain["eval"] = 0
 
-pathdf = pd.DataFrame(glob.glob("data/addtrain_audio/XC*.*"),columns=["audio_paths"])
-pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".mp3","").replace(".ogg",""))
-pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
-addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)
-#addtrain["start_sec"] = 0
+# pathdf = pd.DataFrame(glob.glob("data/addtrain_audio/XC*.*"),columns=["audio_paths"])
+# pathdf["filename_sec"] = pathdf.audio_paths.apply(lambda x: x.split("/")[-1].replace(".mp3","").replace(".ogg",""))
+# pathdf["filename_id"] =pathdf["filename_sec"].apply(lambda x: x.split("_")[0])
+# addtrain = pd.merge(addtrain,pathdf[["filename_id","audio_paths"]].drop_duplicates("filename_id"),on=["filename_id"]).reset_index(drop=True)
+# #addtrain["start_sec"] = 0
 
-print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio_paths"]])
+# print(addtrain[["primary_label","secondary_labels","label_id","labels_id","audio_paths"]])
 
-df = pd.concat([df,addtrain]).reset_index(drop=True)
+# df = pd.concat([df,addtrain]).reset_index(drop=True)
 
 print(df)
 
