@@ -26,7 +26,7 @@ class CFG:
     mixup_out_prob = 0.5
     mixup_in_prob1 = 0.5
     mixup_in_prob2 = 0.5
-    fm_prob =  0
+    fm_prob =  0.5
     backbone_dropout = 0.2
     backbone_droppath = 0.2
     head_dropout = 0.2
@@ -55,7 +55,7 @@ class CFG:
     warmupstep = 0
 
     #エポック数
-    epochs = 55
+    epochs = 45
 
     #factor update
     factors = list([15,10,9,9,8,8,7,7,7,6,6,6]) + list([max(1, 6 - i//4) for i in range(epochs)])
@@ -71,7 +71,7 @@ class CFG:
     lr_ratio = 5
 
     #label smoothing rate
-    smooth = 0.005
+    smooth = 0.01
 
     #model name
     model_name = 'eca_nfnet_l0'

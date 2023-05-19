@@ -90,13 +90,13 @@ def run(foldtrain=False):
     train["secondary_count"] = train["label_id"].map(secondary_label_counts_map).fillna(0)
     train["label_count"] = train["primary_count"] + train["secondary_count"]
     train["sample_weight"] = 1.0/train["label_count"]
-    print("set sampler")
-    print(train["sample_weight"].describe())
-    train_sampler = torch.utils.data.WeightedRandomSampler(
-        list(train["sample_weight"].values),
-        len(train),
-        replacement=True
-    )
+    # print("set sampler")
+    # print(train["sample_weight"].describe())
+    # train_sampler = torch.utils.data.WeightedRandomSampler(
+    #     list(train["sample_weight"].values),
+    #     len(train),
+    #     replacement=True
+    # )
     #trainer.valid_one_cycle(valid_loader, 0)
     for epoch in range(CFG.epochs):
         model.factor = CFG.factors[epoch]
@@ -114,20 +114,20 @@ def run(foldtrain=False):
             batch_size=CFG.batch_size*batch_factor,
             drop_last=True,
             pin_memory=True,
-            #shuffle = True,
+            shuffle = True,
             num_workers=CFG.workers,
-            sampler = train_sampler
+            #sampler = train_sampler
         )
         print(f"{'-'*35} EPOCH: {epoch}/{CFG.epochs} {'-'*35}")
         trainer.train_one_cycle(train_loader,epoch)
         if foldtrain:
-            if (epoch > 25):
+            if (epoch > 30)|(epoch%5==0):
                 trainer.valid_one_cycle(valid_loader,epoch)
         else:
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
-            if (epoch > 40):
+            if (epoch > 40)&(epoch%5==0):
                 try:
                     savename = CFG.weight_dir + f"model_{epoch}.bin"
                     torch.save(trainer.model.state_dict(),savename)

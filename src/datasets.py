@@ -121,6 +121,8 @@ class WaveformDataset(Dataset):
 
         # Create a dictionary where the keys are the filename_ids and the values are the corresponding sub-dataframes (gdf)
         self.gdf_dict = {name: group for name, group in grouped}
+
+        self.mask_size = 8
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length//2:
@@ -157,12 +159,12 @@ class WaveformDataset(Dataset):
                 sample_prob = sampling_weights/sampling_weights.sum()
             else:
                 sample_prob = None
-            mask_freq = np.argwhere(mask.sum(axis=1)==0)[:,0]
-            if len(mask_freq) > 40:
-                mask_freq = []
+            mask_prob = sliding_window_view(mask.sum(axis=1), self.mask_size).sum(axis=1)
+            mask_prob = 1/(mask_prob + 1e-5)
+            mask_prob = mask_prob/mask_prob.sum()
         else:
             sample_prob = None
-            mask_freq = []
+            mask_prob = None
 
         #periodより長いか判定する
         duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
@@ -177,7 +179,12 @@ class WaveformDataset(Dataset):
                 offset = random.uniform(0, duration_seconds - self.period)
         
         mask_freq_array = np.ones((self.CFG.n_mel, self.period*100),dtype=bool)
-        mask_freq_array[mask_freq] = 0
+        if mask_prob is not None:
+            mask_offsets = np.random.choice(len(mask_prob), size=2, p=mask_prob)
+            for mask_offset in mask_offsets:
+                mask_freq_array[mask_offset:mask_offset + self.mask_size] = 0
+        else:
+            pass
 
         return offset, mask_freq_array
 
