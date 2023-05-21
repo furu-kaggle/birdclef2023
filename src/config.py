@@ -21,6 +21,7 @@ class CFG:
     prilabelp = 1.0
     seclabelp = 0.75
     frame = 500
+<<<<<<< HEAD
     augpower_min = 2
     augpower_max = 2
     mixup_out_prob = 1.0
@@ -29,6 +30,12 @@ class CFG:
     noise_aug_p = 0.5
     geometric_mixup_p = 0.75
     fm_prob =  0.5
+=======
+    augpower_min = 1.9
+    augpower_max = 2.1
+    mixup_out_prob = 0.3
+    mixup_in_prob = 1.0
+>>>>>>> origin/feature-bestmodelmixup
     backbone_dropout = 0.2
     backbone_droppath = 0.2
     head_dropout = 0

@@ -41,6 +41,12 @@ train_aug = AA.Compose(
         ),
         AA.AddGaussianSNR(
             min_snr_in_db=5,max_snr_in_db=10.0,p=0.25
+<<<<<<< HEAD
+=======
+        ),
+        AA.LowPassFilter(
+            min_cutoff_freq=100, max_cutoff_freq=10000, p=0.25
+>>>>>>> origin/feature-bestmodelmixup
         )
     ]
 )
@@ -70,6 +76,7 @@ class WaveformDataset(Dataset):
         self.prilabelp = prilabelp - smooth
         self.seclabelp = seclabelp - smooth
         self.train = train
+<<<<<<< HEAD
 
         cand_df = self.df[["filename_id","latitude","longitude"]].dropna().drop_duplicates()
         cand_df["latitude"] = cand_df["latitude"].round(2)
@@ -109,6 +116,8 @@ class WaveformDataset(Dataset):
             self.train_df = self.df[self.df.sec > self.period].reset_index(drop=True)
         else:
             self.train_df = self.df
+=======
+>>>>>>> origin/feature-bestmodelmixup
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length//2:
@@ -132,6 +141,7 @@ class WaveformDataset(Dataset):
             y = y[start:start + length]
 
         return y
+<<<<<<< HEAD
 
     def get_offset(self, row):
         #準備
@@ -143,6 +153,19 @@ class WaveformDataset(Dataset):
             if mask.shape[1] > self.period*100:
                 sampling_weights = sliding_window_view(mask.max(axis=0), self.period*100).sum(axis=1)[::100]
                 sample_prob = sampling_weights/sampling_weights.sum()
+=======
+        
+        
+    def __len__(self):
+        return len(self.df)
+
+    def load_audio(self,row):
+        if (self.train)&(self.period >= 30):
+            duration_seconds = librosa.get_duration(filename=row.audio_paths,sr=None)
+            #訓練時にはランダムにスタートラインを変える(time shift augmentations)
+            if (self.train)&(duration_seconds > max(35, self.period + 5)):
+                offset = random.uniform(0, duration_seconds - self.period)
+>>>>>>> origin/feature-bestmodelmixup
             else:
                 sample_prob = None
             mask_prob = sliding_window_view(mask.sum(axis=1), self.mask_size).sum(axis=1)
@@ -172,6 +195,7 @@ class WaveformDataset(Dataset):
         else:
             pass
 
+<<<<<<< HEAD
         return offset, mask_freq_array
 
     def load_audio(self, row, offset):
@@ -183,6 +207,12 @@ class WaveformDataset(Dataset):
         if (self.train)&(random.uniform(0,1) < self.CFG.noise_aug_p):
              data = self.aug(samples=data, sample_rate=self.sr)
 
+=======
+        #augemnt1
+        if (self.train)&(random.uniform(0,1) < row.weight):
+             data = self.aug(samples=data, sample_rate=sr)
+
+>>>>>>> origin/feature-bestmodelmixup
         #test datasetの最大長
         max_sec = len(data)//self.sr
 
@@ -228,6 +258,7 @@ class WaveformDataset(Dataset):
         row = self.train_df.iloc[idx]
         audio1, label1, freqmask1 = self.get_audio(row)
         if self.train:
+<<<<<<< HEAD
             if (row.filename_id in self.cand_dict)&(random.uniform(0,1) < self.CFG.geometric_mixup_p):
                 pair_id = np.random.choice(self.cand_dict[row.filename_id])
                 row2 = self.df[self.df.filename_id == pair_id].iloc[0]
@@ -238,6 +269,13 @@ class WaveformDataset(Dataset):
             audio = np.stack([audio1,audio2])
             label = np.stack([label1,label2])
             freqmask = np.stack([freqmask1,freqmask2])
+=======
+            pair_idx = np.random.choice(len(self.df))
+            row2 = self.df.iloc[pair_idx]
+            audio2, label2 = self.load_audio(row2)
+            audio = np.stack([audio1,audio2])
+            label = np.stack([label1,label2])
+>>>>>>> origin/feature-bestmodelmixup
         else:
             audio = audio1
             label = label1
