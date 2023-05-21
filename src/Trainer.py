@@ -37,6 +37,7 @@ from audiomentations import (
 import timm
 
 from .Record import Record
+from torch.cuda.amp import GradScaler, autocast
 
 class Trainer:
     def __init__(self, model, optimizer, scheduler, device, CFG):
@@ -49,6 +50,7 @@ class Trainer:
         self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
         self.device = device
         self.CFG = CFG
+        self.scaler = GradScaler()
     
     def train_one_cycle(self, train_loader, epoch):
         """
@@ -69,13 +71,16 @@ class Trainer:
             freqmask = freqmask.to(self.device, dtype=torch.float)
             
             self.optimizer.zero_grad()
-            pred, loss = self.model(data, label, weight, freqmask)       
+            with autocast():
+                pred, loss = self.model(data, label, weight, freqmask)       
             record.update(pred, label)
+
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+
             total_loss += (loss.detach().item() * label.size(0))
             total_nums += label.size(0)
-            
-            loss.backward()
-            self.optimizer.step()
 
             pbar.set_description("[loss %f, lr %e]" % (total_loss / total_nums, self.optimizer.param_groups[0]['lr']))
 
@@ -100,9 +105,9 @@ class Trainer:
                 xval = xval.to(self.device, dtype=torch.float)
                 yp = yp.to(self.device, dtype=torch.float)
                 ys = ys.to(self.device, dtype=torch.float)
-
-                pred, pl = self.model(xval, yp)
-                _, sl = self.model(xval, ys)
+                with autocast():
+                    pred, pl = self.model(xval, yp)
+                    _, sl = self.model(xval, ys)
                 record.eval_update(pred, yp, ys, pl, sl, uid, sc)
                 pbar.set_description("[ploss %f sloss %f]" % (record.get_loss()[0],record.get_loss()[1]))
         

@@ -26,6 +26,7 @@ import copy, codecs
 import sklearn.metrics
 
 import timm
+from torch.cuda.amp import GradScaler, autocast
 
 
 def init_layer(layer):
@@ -96,21 +97,22 @@ class Model(nn.Module):
     def wavtoimg(self, wav, freqmask=None, power=2):
         self.mel.power = power
         self.mel.spectrogram.power = power
-        melimg = self.mel(wav)
-        dbimg = self.ptodb(melimg)
-        img = (dbimg.to(torch.float32) + 80)/80
-        img = img[:,:,:-1]
-        if (freqmask is not None)&(random.uniform(0,1)< self.cfg.fm_prob):
-            img = img*freqmask
+        with autocast(enabled=False):
+            melimg = self.mel(wav)
+            dbimg = self.ptodb(melimg)
+            img = (dbimg.to(torch.float32) + 80)/80
+            img = img[:,:,:-1]
+            if (freqmask is not None)&(random.uniform(0,1)< self.cfg.fm_prob):
+                img = img*freqmask
         return img
 
     def gem_pooling(self, x, p=3, eps=1e-6):
         return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1.0 / p)
 
     def inner_mixup(self, x, x_mix, batch_size):        
-        perms = torch.randperm(self.factor).to(x.device)
-        for i, perm in enumerate(perms):
-            x_mix[:,:,i*self.frame:(i+1)*self.frame] = x[:,:,perm*self.frame:(perm+1)*self.frame]
+        #perms = torch.randperm(self.factor).to(x.device)
+        #for i, perm in enumerate(perms):
+        #    x_mix[:,:,i*self.frame:(i+1)*self.frame] = x[:,:,perm*self.frame:(perm+1)*self.frame]
 
         lam1, lam2 = self.mixup_in.get_lambda(batch_size)
         lam1, lam2 = lam1.to(x.device), lam2.to(x.device)
@@ -119,7 +121,7 @@ class Model(nn.Module):
 
     def forward(self, x, y=None, w=None, freqmask=None):
         if self.training:
-            power = random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
+            power = 2#random.uniform(self.cfg.augpower_min,self.cfg.augpower_min)
             batch_size = x.shape[0]
 
             if (random.uniform(0,1) < self.cfg.mixup_in_prob1):

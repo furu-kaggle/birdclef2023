@@ -55,7 +55,7 @@ def run(foldtrain=False):
         )
         valid_loader = DataLoader(
             valid_set,
-            batch_size=CFG.batch_size,
+            batch_size=120,
             pin_memory=True,
             shuffle = False,
             drop_last=True,
@@ -84,12 +84,12 @@ def run(foldtrain=False):
         scheduler = scheduler,
         device=device
     )
-    primary_label_counts_map = train["label_id"].value_counts().to_dict()
-    secondary_label_counts_map = train["labels_id"].explode().value_counts().to_dict()
-    train["primary_count"] = train["label_id"].map(primary_label_counts_map)
-    train["secondary_count"] = train["label_id"].map(secondary_label_counts_map).fillna(0)
-    train["label_count"] = train["primary_count"] + train["secondary_count"]
-    train["sample_weight"] = 1.0/train["label_count"]
+    # primary_label_counts_map = train["label_id"].value_counts().to_dict()
+    # secondary_label_counts_map = train["labels_id"].explode().value_counts().to_dict()
+    # train["primary_count"] = train["label_id"].map(primary_label_counts_map)
+    # train["secondary_count"] = train["label_id"].map(secondary_label_counts_map).fillna(0)
+    # train["label_count"] = train["primary_count"] + train["secondary_count"]
+    # train["sample_weight"] = 1.0/train["label_count"]
     # print("set sampler")
     # print(train["sample_weight"].describe())
     # train_sampler = torch.utils.data.WeightedRandomSampler(

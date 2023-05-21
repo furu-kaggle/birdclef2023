@@ -34,18 +34,6 @@ import audiomentations as AA
 train_aug = AA.Compose(
     [
         AA.AddBackgroundNoise(
-            sounds_path="data/ff1010bird_nocall/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.5
-        ),
-        AA.AddBackgroundNoise(
-            sounds_path="data/train_soundscapes/nocall", min_snr_in_db=5, max_snr_in_db=10, p=0.5
-        ),
-        AA.AddBackgroundNoise(
-            sounds_path="data/aicrowd2020_noise_30sec/noise_30sec",
-            min_snr_in_db=5,
-            max_snr_in_db=10,
-            p=0.75,
-        ),
-        AA.AddBackgroundNoise(
             sounds_path="data/useesc50",
             min_snr_in_db=5,
             max_snr_in_db=10,
@@ -71,7 +59,7 @@ class WaveformDataset(Dataset):
                  ):
       
         self.df = df.reset_index(drop=True)
-        self.df["mixup_weight"] = self.df["sample_weight"]/self.df["sample_weight"].sum()
+        #self.df["mixup_weight"] = self.df["sample_weight"]/self.df["sample_weight"].sum()
         #self.label_weight = self.df.set_index("label_id").["sample_weight"]
         self.CFG = CFG
         self.aug = train_aug
@@ -83,25 +71,19 @@ class WaveformDataset(Dataset):
         self.seclabelp = seclabelp - smooth
         self.train = train
 
-        # cand_df = self.df[["filename_id","latitude","longitude"]].dropna().drop_duplicates()
+        cand_df = self.df[["filename_id","latitude","longitude"]].dropna().drop_duplicates()
+        cand_df["latitude"] = cand_df["latitude"].round(2)
+        cand_df["longitude"] = cand_df["longitude"].round(2)
+        cand_df = cand_df.merge(cand_df,on=["latitude","longitude"],suffixes=("","_cand"))
+        cand_df = cand_df[cand_df.filename_id!=cand_df.filename_id_cand].reset_index(drop=True)
+        self.cand_dict = cand_df.groupby("filename_id").filename_id_cand.apply(list).to_dict()
 
-        # candpair_df = cand_df.merge(cand_df,on=["latitude","longitude"],suffixes=("","_cand"))
-        # cand_df = cand_df[cand_df.filename_id!=cand_df.filename_id_cand].reset_index(drop=True)
-        # self.cand_dict = cand_df.groupby("filename_id").filename_id_cand.apply(list).to_dict()
-        
-
-        
-        #Matrix Factorization (サブラベル同士は相関なしとして扱う)
-        self.mfdf = self.df[(self.df.sec_num > 0)][["label_id","labels_id"]].explode("labels_id").reset_index(drop=True)
-        
-        #mixupするlabel_idリストを作成する
-        self.mixup_idlist = self.mfdf.groupby("label_id").labels_id.apply(list).to_dict()
-        
-        #mixupする先はシングルラベルにする
-        sdf = self.df[(self.df.sec_num==0)|(self.df.primary_label=="lotcor1")]
-        
-        #label_idリストからレコード番号を取得し、レコード番号からランダムサンプリングする
-        self.id2record = sdf.groupby("label_id").sort_index.apply(list)
+        cand_df = self.df[["filename_id","latitude","longitude","primary_label","secondary_labels"]].astype({"secondary_labels":str}).dropna().drop_duplicates()
+        cand_df["latitude"] = cand_df["latitude"].round(2)
+        cand_df["longitude"] = cand_df["longitude"].round(2)
+        cand_df = cand_df.merge(cand_df,on=["latitude","longitude","primary_label","secondary_labels"],suffixes=("","_cand"))
+        cand_df = cand_df[cand_df.filename_id!=cand_df.filename_id_cand].reset_index(drop=True)
+        self.cand_dict_inner = cand_df.groupby("filename_id").filename_id_cand.apply(list).to_dict()
 
         self.cache = {}
         self.max_sec = max(self.CFG.factors)*5.0
@@ -123,6 +105,10 @@ class WaveformDataset(Dataset):
         self.gdf_dict = {name: group for name, group in grouped}
 
         self.mask_size = 8
+        if self.period > 50:  
+            self.train_df = self.df[self.df.sec > self.period].reset_index(drop=True)
+        else:
+            self.train_df = self.df
         
     def crop_or_pad(self, y, length, is_train=False, start=None):
         if len(y) < length//2:
@@ -194,7 +180,7 @@ class WaveformDataset(Dataset):
 
     def preprocess_audio(self, data, row):
         #augemnt1
-        if (self.train)&(random.uniform(0,1) < row.weight):
+        if (self.train)&(random.uniform(0,1) < self.CFG.noise_aug_p):
              data = self.aug(samples=data, sample_rate=self.sr)
 
         #test datasetの最大長
@@ -208,7 +194,7 @@ class WaveformDataset(Dataset):
         return data
 
     def __len__(self):
-        return len(self.df)
+        return len(self.train_df)
 
     def get_audio(self, row):
         offset, freqmask = self.get_offset(row)
@@ -216,19 +202,16 @@ class WaveformDataset(Dataset):
         data = self.preprocess_audio(data, row)
 
         if self.train:
-            #add train data
-            if row.sec_num==0:
-                pair_idx = np.random.choice(self.id2record[row.label_id])
-                row_pair = self.df.iloc[pair_idx]
+            if row.filename_id in self.cand_dict_inner:
+                pair_id = np.random.choice(self.cand_dict[row.filename_id])
+                row_pair = self.df[self.df.filename_id == pair_id].iloc[0]
                 offset, freqmask_pair = self.get_offset(row_pair)
                 data_pair = self.load_audio(row_pair, offset)
                 data_pair = self.preprocess_audio(data_pair, row_pair)
-
             else:
                 offset, freqmask_pair = self.get_offset(row)
                 data_pair = self.load_audio(row, offset)
                 data_pair = self.preprocess_audio(data_pair, row)
-
             data = np.stack([data, data_pair])
             freqmask = np.stack([freqmask, freqmask_pair])
         
@@ -242,16 +225,15 @@ class WaveformDataset(Dataset):
         return data, labels, freqmask
     
     def __getitem__(self, idx):
-        row = self.df.iloc[idx]
+        row = self.train_df.iloc[idx]
         audio1, label1, freqmask1 = self.get_audio(row)
         if self.train:
-            # if (self.CFG.mixup_fm)&(row.filename_id in self.cand_dict):
-            #     #FMからペアとなるラベルIDを取得
-            #     filename_id = np.random.choice(self.cand_dict[row.filename_id])
-            #     row2 = self.df[self.df.filename_id == filename_id].iloc[0]
-            # else:
-            pair_idx = np.random.choice(len(self.df), p=self.df["mixup_weight"].values)
-            row2 = self.df.iloc[pair_idx]
+            if (row.filename_id in self.cand_dict)&(random.uniform(0,1) < self.CFG.geometric_mixup_p):
+                pair_id = np.random.choice(self.cand_dict[row.filename_id])
+                row2 = self.df[self.df.filename_id == pair_id].iloc[0]
+            else:
+                pair_idx = np.random.choice(len(self.df))
+                row2 = self.df.iloc[pair_idx]
             audio2, label2, freqmask2 = self.get_audio(row2)
             audio = np.stack([audio1,audio2])
             label = np.stack([label1,label2])
