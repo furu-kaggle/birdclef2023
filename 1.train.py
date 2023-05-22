@@ -127,9 +127,9 @@ def run(foldtrain=False):
             #last save model
             savename = CFG.weight_dir + f"model_{CFG.key}_last.bin"
             torch.save(trainer.model.state_dict(),savename)
-            if (epoch > 40)&(epoch%5==0):
+            if (epoch > 30)&(epoch%5==0):
                 try:
-                    savename = CFG.weight_dir + f"model_{epoch}.bin"
+                    savename = CFG.weight_dir + f"model_{CFG.key}_{epoch}.bin"
                     torch.save(trainer.model.state_dict(),savename)
                 except:
                     pass
@@ -181,8 +181,8 @@ CFG.CLASS_NUM = len(unique_key)
 
 CFG.id2label = id2label
 
-CFG.key = "eval"
-run(foldtrain=True)
+# CFG.key = "eval"
+# run(foldtrain=True)
 
 def set_seed(seed: int = 42):
     random.seed(seed)
@@ -193,14 +193,18 @@ def set_seed(seed: int = 42):
     torch.backends.cudnn.deterministic = True  # type: ignore
     torch.backends.cudnn.benchmark = True  # type: ignore
 
-set_seed(35)
-CFG.key = "all_35"
+# set_seed(35)
+# CFG.key = "all_35"
+# run(foldtrain=False)
+
+set_seed(3152)
+CFG.key = "all_3152"
 run(foldtrain=False)
 
-# set_seed(355)
-# CFG.key = "all_355"
-# run(foldtrain=False)
+set_seed(3711)
+CFG.key = "all_3711"
+run(foldtrain=False)
 
-# set_seed(311)
-# CFG.key = "all_311"
-# run(foldtrain=False)
+set_seed(3311)
+CFG.key = "all_3311"
+run(foldtrain=False)
